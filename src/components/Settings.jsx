@@ -318,7 +318,7 @@ export default function Settings({ onClose, background, extraButtons }) {
           }}
         >
           <button style={buttonStyle} onClick={handleSave}>Save</button>
-          <button style={buttonStyle} onClick={handleReset}>Reset</button>
+          <button style={buttonStyle} onClick={handleReset}>Reset Settings</button>
           <button style={dangerButtonStyle} onClick={handleResetProgress}>Reset Progress</button>
           <button style={buttonStyle} onClick={handleExit}>Exit</button>
           {extraButtons}

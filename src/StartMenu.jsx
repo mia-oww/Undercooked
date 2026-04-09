@@ -17,6 +17,7 @@ import {
   startGuestMode,
 } from "./guestSession";
 
+
 export default function StartMenu() {
   const navigate = useNavigate();
 
@@ -163,6 +164,39 @@ export default function StartMenu() {
           opacity: playBusy ? 0.9 : 1,
         }}
       />
+
+      <button
+        onClick={() => navigate("/leaderboard")}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "translateX(-50%) scale(1.05)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "translateX(-50%) scale(1)";
+        }}
+        style={{
+          position: "fixed",
+          bottom: "2%", // below Play (which is 10%)
+          left: "51%",
+          transform: "translateX(-50%)",
+          width: "18vw",
+          padding: "12px",
+          borderRadius: "16px",
+          border: "none",
+          background: "rgba(0, 0, 0, 0.6)",
+          color: "white",
+          fontSize: "18px",
+          fontFamily: "'Fredoka One', cursive",
+          cursor: "pointer",
+          zIndex: 1,
+          transition: "transform 0.15s ease",
+          boxShadow: "0 6px 12px rgba(0,0,0,0.4)",
+          backdropFilter: "blur(6px)",
+        }}
+      >
+        Leaderboard
+      </button>
+      
+
 
       <img
         src={settingsBtnImg}

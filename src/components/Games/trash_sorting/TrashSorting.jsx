@@ -1,6 +1,9 @@
+import { supabase } from "../../../supabase";
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveLevelResult } from "../../../utils/levelProgress";
+import Settings from "../../Settings";
+
 import blankHoneyImg from "../../../assets/sprites/fish-prep/blankhoney.png";
 import filledHoneyImg from "../../../assets/sprites/fish-prep/honey2.png";
 import wavingBearImg from "../../../assets/sprites/river-game-sprites/wavingbear.png";
@@ -10,12 +13,24 @@ import trash3Img from "../../../assets/sprites/river-game-sprites/trash3.png";
 import trash4Img from "../../../assets/sprites/river-game-sprites/trash4.png";
 import trashcanImg from "../../../assets/sprites/river-game-sprites/trashcan.png";
 
+// COMPOST 
+import deadfishImg from "../../../assets/sprites/fish-prep/deadfish.png";
+import filletImg from "../../../assets/sprites/fish-prep/fillet.png";
+import bonefishImg from "../../../assets/sprites/fish-prep/fishbone2.png";
+import fishtailImg from "../../../assets/sprites/fish-prep/fishtail.png";
+
+import livesImg from "../../../assets/sprites/river-game-sprites/lives.png";
+import settingsCogImg from "../../../assets/settings_cog.png";
+
+
+
 const ITEM_IMAGES = {
   COMPOST:  trash2Img,
   RECYCLE:  trash3Img,
   LANDFILL: trash4Img,
   SPECIAL:  trashcanImg,
 };
+
 
 // ─── Pyodide / Python game logic ──────────────────────────────────────────────
 const PYODIDE_CDN = "https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js";
@@ -229,6 +244,9 @@ function calcStars(score, misses, criticalMisses) {
 export default function RecycleGame() {
   const navigate = useNavigate();
 
+  // for lives
+  const [lives, setLives] = useState(3);
+    const [showSettings, setShowSettings] = useState(false);    
   // Dialogue
   const [dialogueIndex, setDialogueIndex] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
@@ -323,28 +341,79 @@ export default function RecycleGame() {
   }, [pyReady, gameStarted, gameState?.started, gameState?.finished]);
 
   // ── Finish → show results ─────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!gameState?.finished || showResults) return;
-    const stars = calcStars(gameState.score, gameState.misses, gameState.criticalMisses);
-    setFinalStars(stars);
-    saveLevelResult(4, stars);
+useEffect(() => {
+  if (!gameState?.finished || showResults) return;
+  const stars = calcStars(gameState.score, gameState.misses, gameState.criticalMisses);
+  setFinalStars(stars);
+  saveLevelResult(4, stars);
+
+  async function saveProgress() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const { data: currentProfile, error: fetchError } = await supabase
+        .from("profiles")
+        .select("level, level4_stars, level4_score, sustain_score")
+        .eq("user_id", session.user.id)
+        .single();
+      if (fetchError || !currentProfile) return;
+      const actualScore = stars * 130;
+      const newBestStars = Math.max(currentProfile.level4_stars ?? 0, stars);
+      const newBestScore = Math.max(currentProfile.level4_score ?? 0, actualScore);
+      const nextUnlockedLevel = Math.max(currentProfile.level ?? 0, 5);
+      const currentSustainScore = currentProfile.sustain_score ?? 0;
+      const nextSustainScore = Math.max(0, currentSustainScore - (currentProfile.level4_score ?? 0) + newBestScore);
+      await supabase.from("profiles").update({
+        level4_stars: newBestStars,
+        level4_score: newBestScore,
+        level: nextUnlockedLevel,
+        sustain_score: nextSustainScore,
+        updated_at: new Date().toISOString(),
+      }).eq("user_id", session.user.id);
+    } catch (error) {
+      console.error("Failed to save progress:", error);
+    }
+  }
+  saveProgress();
+
+  setTimeout(() => {
+    setShowResults(true);
+    [0, 1, 2].forEach((i) => {
+      if (i < stars) {
+        setTimeout(() => {
+          setHoneyEarned(prev => { const n = [...prev]; n[i] = true; return n; });
+          setTimeout(() => {
+            setHoneyPop(prev => { const n = [...prev]; n[i] = true; return n; });
+            setTimeout(() => {
+              setHoneyPop(prev => { const n = [...prev]; n[i] = false; return n; });
+            }, 600);
+          }, 20);
+        }, 600 + i * 450);
+      }
+    });
+  }, 800);
+}, [gameState?.finished]);
+
+// ── Lives → game over ─────────────────────────────────────────────────────────
+useEffect(() => {
+  if (lives <= 0 && gameStarted && !showResults) {
     setTimeout(() => {
       setShowResults(true);
-      [0, 1, 2].forEach((i) => {
-        if (i < stars) {
+      const stars = 1;
+      setFinalStars(stars);
+      saveLevelResult(4, stars);
+      setTimeout(() => {
+        setHoneyEarned(prev => { const n = [...prev]; n[0] = true; return n; });
+        setTimeout(() => {
+          setHoneyPop(prev => { const n = [...prev]; n[0] = true; return n; });
           setTimeout(() => {
-            setHoneyEarned(prev => { const n = [...prev]; n[i] = true; return n; });
-            setTimeout(() => {
-              setHoneyPop(prev => { const n = [...prev]; n[i] = true; return n; });
-              setTimeout(() => {
-                setHoneyPop(prev => { const n = [...prev]; n[i] = false; return n; });
-              }, 600);
-            }, 20);
-          }, 600 + i * 450);
-        }
-      });
+            setHoneyPop(prev => { const n = [...prev]; n[0] = false; return n; });
+          }, 600);
+        }, 20);
+      }, 600);
     }, 800);
-  }, [gameState?.finished]);
+  }
+}, [lives, gameStarted, showResults]);
 
   // ── Dialogue ──────────────────────────────────────────────────────────────────
   const isLastDialogue = dialogueIndex === DIALOGUE.length - 1;
@@ -383,20 +452,22 @@ export default function RecycleGame() {
   }
 
   function onMouseMove(e) {
-    if (!draggingRef.current) return;
-    e.preventDefault();
-    setGhostPos({ x: e.clientX, y: e.clientY });
-    setItems(prev => prev.map(it => it.id === draggingRef.current.id ? { ...it, dragX: e.clientX, dragY: e.clientY } : it));
-  }
+  if (!draggingRef.current) return;
+  e.preventDefault();
+  const dragging = draggingRef.current; // ← save it first
+  if (!dragging) return; // ← double check
+  setGhostPos({ x: e.clientX, y: e.clientY });
+  setItems(prev => prev.map(it => it.id === dragging.id ? { ...it, dragX: e.clientX, dragY: e.clientY } : it));
+}
 
   function onMouseUp(e) {
-    if (!draggingRef.current) return;
-    const { id } = draggingRef.current;
-    const item = items.find(it => it.id === id);
-    draggingRef.current = null;
-    setDraggingId(null);
+  if (!draggingRef.current) return;
+  const { id } = draggingRef.current;
+  const item = items.find(it => it.id === id);
+  draggingRef.current = null;
+  setDraggingId(null);
 
-    if (!item || !containerRef.current) return;
+  if (!item || !containerRef.current || !gameObjRef.current) return;  // ← add gameObjRef check
 
     // find center of dragged item
     const containerRect = containerRef.current.getBoundingClientRect();
@@ -404,9 +475,15 @@ export default function RecycleGame() {
     const cy = e.clientY - containerRect.top;
     const binCategory = getBinUnderPoint(cx, cy, containerRef.current) ?? "NONE";
 
-    const newState = toJS(gameObjRef.current.dropItem(id, binCategory, nowMs()));
-    setGameState(newState);
-    syncPlaced(newState.items);
+let newState;
+try {
+  newState = toJS(gameObjRef.current.dropItem(id, binCategory, nowMs()));
+} catch (err) {
+  console.error("Drop error:", err);
+  return;
+}
+setGameState(newState);
+syncPlaced(newState.items);
 
     if (newState.lastDrop) {
       const drop = newState.lastDrop;
@@ -414,6 +491,7 @@ export default function RecycleGame() {
         setFeedback({ text: "✔ Correct! " + drop.message, type: "correct" });
       } else if (drop.missType === "critical") {
         setFeedback({ text: "⚠ Critical! " + drop.message, type: "critical" });
+        setLives(prev => Math.max(0, prev - 1));  // ← added this line
       } else {
         setFeedback({ text: "✖ Not quite. " + drop.message, type: "wrong" });
       }
@@ -434,13 +512,15 @@ export default function RecycleGame() {
     setDraggingId(item.id);
   }
 
-  function onTouchMove(e) {
-    if (!draggingRef.current) return;
-    e.preventDefault();
-    const touch = e.touches[0];
-    setGhostPos({ x: touch.clientX, y: touch.clientY });
-    setItems(prev => prev.map(it => it.id === draggingRef.current.id ? { ...it, dragX: touch.clientX, dragY: touch.clientY } : it));
-  }
+function onTouchMove(e) {
+  if (!draggingRef.current) return;
+  e.preventDefault();
+  const dragging = draggingRef.current; // ← save it first
+  if (!dragging) return;
+  const touch = e.touches[0];
+  setGhostPos({ x: touch.clientX, y: touch.clientY });
+  setItems(prev => prev.map(it => it.id === dragging.id ? { ...it, dragX: touch.clientX, dragY: touch.clientY } : it));
+}
 
   function onTouchEnd(e) {
     if (!draggingRef.current) return;
@@ -455,6 +535,7 @@ export default function RecycleGame() {
     gameObjRef.current = newGame(null);
     const state = toJS(gameObjRef.current.asDict(nowMs()));
     setGameState(state);
+    setLives(3);
     layoutItems(state.items);
     setFeedback(null);
     setShowResults(false);
@@ -483,12 +564,14 @@ export default function RecycleGame() {
       style={{
         width: "100vw", height: "100vh", overflow: "hidden",
         background: `url(${homescreenImg}) center/cover no-repeat`,
-        fontFamily: "system-ui, -apple-system, sans-serif",
+        fontFamily: "'Fredoka One', cursive, sans-serif",
         display: "flex", flexDirection: "column",
         userSelect: "none", color: "#eee",
       }}
     >
-      <style>{`
+      <style>{` 
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800&display=swap');
+
         @keyframes honeyPop {
           0%   { transform: scale(1); }
           40%  { transform: scale(1.45) rotate(-8deg); }
@@ -549,6 +632,7 @@ export default function RecycleGame() {
       `}</style>
 
       <div id="rg-hud">
+        
         <div className="rg-hud-block">
           <span className="rg-hud-label">Score</span>
           <span className="rg-hud-val">{gameState?.score ?? 0}</span>
@@ -566,20 +650,50 @@ export default function RecycleGame() {
           <span className={`rg-hud-val${(gameState?.criticalMisses ?? 0) > 0 ? " bad" : ""}`}>{gameState?.criticalMisses ?? 0}</span>
         </div>
         <div className="rg-hud-block">
+  <span className="rg-hud-label">Lives</span>
+  <div style={{ display: "flex", alignItems: "center" }}>
+    {[0, 1, 2].map(i => (
+      <img key={i} src={livesImg} alt="" style={{
+        width: "28px", height: "28px", objectFit: "contain",
+        marginRight: i < 2 ? "-6px" : 0,
+        filter: i >= lives ? "grayscale(1) opacity(0.3)" : "none",
+        transition: "filter 0.3s",
+      }} />
+    ))}
+  </div>
+</div>
+        <div className="rg-hud-block">
           <span className="rg-hud-label">Time</span>
           <span className="rg-hud-val">{elapsed}s</span>
         </div>
       </div>
 
-      <div id="rg-top-right">
+      {/*<div id="rg-top-right">
         <button className="rg-top-btn" onClick={() => navigate("/level-selection")}>← Menu</button>
         <button className="rg-top-btn" onClick={handleReset}>↺ Reset</button>
-      </div>
+      </div>*/}
+      {gameStarted && (
+  <button onClick={() => setShowSettings(true)} title="Settings" style={{
+    position: "fixed", top: "14px", right: "14px", zIndex: 30,
+    width: "46px", height: "46px",
+    background: "rgba(255,255,255,0.22)",
+    backdropFilter: "blur(14px) saturate(1.6)",
+    border: "1px solid rgba(255,255,255,0.45)", borderRadius: "14px",
+    boxShadow: "0 4px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)",
+    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+    transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+  }}
+    onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1) rotate(22deg)"}
+    onMouseLeave={e => e.currentTarget.style.transform = "scale(1) rotate(0deg)"}
+  >
+    <img src={settingsCogImg} alt="settings" style={{ width: "26px", height: "26px", objectFit: "contain" }} />
+  </button>
+)}
 
       {/* ── Feedback hint bar — bottom center, like FishPrepGame ── */}
       {gameStarted && feedback && (
         <div style={{
-          position: "fixed", bottom: "18px", left: "50%", transform: "translateX(-50%)",
+          position: "fixed", bottom: "650px", left: "50%", transform: "translateX(-50%)",
           fontSize: "0.88rem", fontWeight: 700, letterSpacing: "0.5px", zIndex: 15,
           whiteSpace: "nowrap", pointerEvents: "none",
           textShadow: "0 1px 4px rgba(0,0,0,0.4)",
@@ -591,7 +705,7 @@ export default function RecycleGame() {
           backdropFilter: "blur(8px)",
           color: "white", padding: "8px 24px", borderRadius: "50px",
           border: "1px solid rgba(255,255,255,0.2)",
-          fontFamily: "system-ui, sans-serif",
+          fontFamily: "Fredoka One', cursive, sans-serif",
           boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
           transition: "background 0.3s ease",
         }}>
@@ -602,30 +716,31 @@ export default function RecycleGame() {
       {/* ── Main layout: left panel + right bins ── */}
       <div style={{
         flex: 1, display: "flex", flexDirection: "row",
-        gap: "22px", padding: "72px 24px 16px",
+        gap: "22px", padding: "140px 30px 60px",
         overflow: "hidden",
       }}>
 
-        {/* ── Left: items panel ── */}
-        <div style={{
-          width: "520px", flexShrink: 0,
-          background: "#e6e6e6",
-          borderRadius: "14px",
-          border: "1px solid #2a2a38",
-          padding: "14px",
-          display: "flex", flexDirection: "column",
-          overflow: "hidden",
-        }}>
-          <div style={{ fontSize: "13px", color: "#111111", marginBottom: "10px" }}>
-            Drag items into matching bins. Faster finish = more points.
+{/* ── Left: items panel ── */}
+<div style={{
+  width: "420px", flexShrink: 0,
+  background: "rgba(255,255,255,0.25)",
+  borderRadius: "14px",
+  border: "1px solid #5fb3de",
+  padding: "12px",  // ← smaller padding
+  display: "flex", flexDirection: "column",
+  overflow: "hidden",
+}}>
+          {/*<div style={{ fontSize: "13px", color: "#111111", marginBottom: "10px" }}>
+            Drag items into matching bins. Faster finish = more points!
             &nbsp;+100 correct, -50 wrong, -150 critical. &nbsp;+10 bonus per streak.
-          </div>
+          </div>*/}
 <div style={{
   display: "grid",
-  gridTemplateColumns: "repeat(4, 1fr)",
-  gap: "8px",
+  gridTemplateColumns: "repeat(3, 1fr)", // for how many colss we want for items
+  gap: "6px",
   flex: 1,
   alignContent: "start",
+  overflowY: "auto",
 }}>
   {items.map((item) => {
     const isDragging = draggingId === item.id;
@@ -634,6 +749,8 @@ export default function RecycleGame() {
         key={item.id}
         onMouseDown={(e) => onMouseDown(e, item)}
         onTouchStart={(e) => onTouchStart(e, item)}
+        onMouseEnter={(e) => { if (!item.placed) e.currentTarget.style.transform = "scale(1.08)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
         style={{
           height: "60px",
           borderRadius: "10px",
@@ -653,6 +770,7 @@ export default function RecycleGame() {
           draggable={false}
           style={{ height: "100%", objectFit: "contain" }}
         />
+        
       </div>
     );
   })}
@@ -689,7 +807,7 @@ export default function RecycleGame() {
                 {/* inner dark drop area */}
                 <div style={{
                   flex: 1, marginTop: "10px",
-                  background: "#e9e9e9",
+                  background:  "rgba(255,255,255,0.25)",
                   borderRadius: "10px",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: "13px", color: "#555",
@@ -919,6 +1037,45 @@ export default function RecycleGame() {
           </div>
         </div>
       )}
+
+
+            {showSettings && (
+    <div style={{ position: "fixed", inset: 0, zIndex: 60, color: "#000"}}>
+    <Settings
+      onClose={() => setShowSettings(false)}
+      extraButtons={
+        <button onClick={() => navigate("/level-selection")} style={{
+          padding: "14px 38px", fontSize: "20px", borderRadius: "18px",
+          border: "none", backgroundColor: "#c0392b", color: "white",
+          cursor: "pointer", fontFamily: "'Fredoka One', cursive",
+        }}>
+          Main Menu
+        </button>
+      }
+    />
+  </div>
+)}
+
+{/* ── Bottom hint pill ── */}
+<div style={{
+  position: "fixed", bottom: "18px", left: "50%", transform: "translateX(-50%)",
+  background: "rgba(255,255,255,0.22)",
+  backdropFilter: "blur(14px) saturate(1.6)",
+  WebkitBackdropFilter: "blur(14px) saturate(1.6)",
+  border: "1px solid rgba(255,255,255,0.45)",
+  borderRadius: "50px",
+  padding: "8px 24px",
+  boxShadow: "0 4px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)",
+  fontSize: "0.75rem", fontWeight: 800, letterSpacing: "1px",
+  color: "rgba(255,255,255,0.9)",
+  textShadow: "0 1px 3px rgba(0,0,0,0.35)",
+  pointerEvents: "none", zIndex: 15,
+  whiteSpace: "nowrap",
+}}>
+  Drag items into the correct bin • Special waste costs -150 points!
+</div>
+
+
     </div>
   );
 }

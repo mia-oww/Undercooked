@@ -9,6 +9,7 @@ import LevelSelection from "./components/LevelSelection.jsx";
 import Story1 from "./components/Story1.jsx";
 import FishPrepGame from "./components/Games/fishprep/FishPrepGame";
 import TrashSorting from "./components/Games/trash_sorting/TrashSorting.jsx";
+import LeaderboardPage from "./leaderboard.jsx";
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/info" element={<Info />} />
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
       </Routes>
     </BrowserRouter>
   );
