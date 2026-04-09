@@ -996,7 +996,7 @@ export default function RiverGame() {
     s.lives = 3;
     s.trashCombo = 0;
     s.fishCount = 0;
-    s.timeLeft = 11;
+    s.timeLeft = 60;
     s.activeItems.length = 0;
     s.spawnId = 0;
 

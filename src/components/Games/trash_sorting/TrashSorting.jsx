@@ -13,23 +13,59 @@ import trash3Img from "../../../assets/sprites/river-game-sprites/trash3.png";
 import trash4Img from "../../../assets/sprites/river-game-sprites/trash4.png";
 import trashcanImg from "../../../assets/sprites/river-game-sprites/trashcan.png";
 
+
+// BINS
+import compostBinImg from "../../../assets/sprites/trash-sorting/compostbin.png";
+import recycleBinImg from "../../../assets/sprites/trash-sorting/recyclebin.png";
+import landfillBinImg from "../../../assets/sprites/trash-sorting/landfillbin.png";
+import specialBinImg from "../../../assets/sprites/trash-sorting/specialbin.png";
 // COMPOST 
 import deadfishImg from "../../../assets/sprites/fish-prep/deadfish.png";
 import filletImg from "../../../assets/sprites/fish-prep/fillet.png";
 import bonefishImg from "../../../assets/sprites/fish-prep/fishbone2.png";
 import fishtailImg from "../../../assets/sprites/fish-prep/fishtail.png";
+import bananaImg from "../../../assets/sprites/trash-sorting/banana_compost.png"; 
+import appleImg from "../../../assets/sprites/trash-sorting/apple_compost.png";
 
 import livesImg from "../../../assets/sprites/river-game-sprites/lives.png";
 import settingsCogImg from "../../../assets/settings_cog.png";
 
 
-
 const ITEM_IMAGES = {
-  COMPOST:  trash2Img,
-  RECYCLE:  trash3Img,
-  LANDFILL: trash4Img,
-  SPECIAL:  trashcanImg,
+  "Banana": bananaImg,
+  "Apple": appleImg,
+  "Aluminum Can":  trash2Img,
+  "Fish tail": fishtailImg,
+  "Shrink Wrap ":  trash3Img,
+  "Mask": trash4Img,
+  "SPECIAL":  trashcanImg,
 };
+const CATEGORY_IMAGE_POOLS = {
+  COMPOST: [bananaImg, appleImg, fishtailImg],   // add more compost images here
+  RECYCLE: [trash3Img, trash2Img],                         // add more recycle images here
+  LANDFILL: [trash4Img],                        // add more landfill images here
+  SPECIAL: [trashcanImg],                       // add more special images here
+};
+const BIN_IMAGES = {
+    COMPOST: compostBinImg,
+    RECYCLE: recycleBinImg,
+    LANDFILL: landfillBinImg,
+    SPECIAL: specialBinImg,
+};
+
+const ITEM_BANK = [
+  // COMPOST
+  { name: "Banana", category: "COMPOST", img: bananaImg, why: "Banana peels are organic and break down naturally in compost.", whyNot: "This is organic food waste, it doesn't belong here." },
+  { name: "Apple", category: "COMPOST", img: appleImg, why: "Apple cores are organic food waste perfect for composting.", whyNot: "This is organic food waste, it doesn't belong here." },
+  { name: "Fish tail", category: "COMPOST", img: fishtailImg, why: "Fish tails are organic and can be composted.", whyNot: "This is organic food waste it doesn't belong here." },
+  // RECYCLE
+  { name: "Aluminum Can", category: "RECYCLE", img: trash3Img, why: "Aluminum cans are recyclable!", whyNot: "This is recyclable metal, it doesn't belong here." },
+  { name: "Shrink Wrap", category: "RECYCLE", img: trash3Img, why: "Shrink wrap is recyclable.", whyNot: "This is recyclable plastic, it doesn't belong here." },
+  // LANDFILL
+  { name: "Mask", category: "LANDFILL", img: trash4Img, why: "Masks are non-recyclable and should be disposed of in the landfill.", whyNot: "This is non-recyclable plastic — it doesn't belong here." },
+  // SPECIAL
+  { name: "Battery", category: "SPECIAL", img: trashcanImg, why: "Batteries need special disposal to prevent chemical leaks.", whyNot: "This is hazardous — it doesn't belong here." },
+];
 
 
 // ─── Pyodide / Python game logic ──────────────────────────────────────────────
@@ -41,11 +77,11 @@ from dataclasses import dataclass
 import random
 
 CATEGORIES = ["COMPOST", "RECYCLE", "LANDFILL", "SPECIAL"]
-POINTS_CORRECT = 100
-PENALTY_WRONG = 50
-PENALTY_SPECIAL_WRONG = 150
+POINTS_CORRECT = 50
+PENALTY_WRONG = 25
+PENALTY_SPECIAL_WRONG = 75
 STREAK_BONUS_PER = 10
-MAX_SPEED_BONUS = 200
+MAX_SPEED_BONUS = 75
 BONUS_ZERO_AT_SEC = 90.0
 
 def speedBonus(elapsedSec):
@@ -84,55 +120,21 @@ class Game:
     def reset(self, seed=None):
         rng = random.Random(seed)
         sushiTrashBank = [
-            ("Rice scraps", "COMPOST",
-             "Rice is organic food waste that can break down naturally in compost.",
-             "This contains organic food material, which doesn't belong here."),
-            ("Seaweed scraps (nori)", "COMPOST",
-             "Seaweed is natural organic material that can decompose in compost systems.",
-             "This is organic food material, which doesn't belong here."),
-            ("Wasabi leftovers", "COMPOST",
-             "Food leftovers are organic and can be composted instead of sent to landfill.",
-             "This contains organic food residue, which doesn't belong here."),
-            ("Soiled paper napkin", "COMPOST",
-             "Soiled paper fibers can often be composted when recycling is not possible.",
-             "This contains food residue and paper fibers, which don't belong here."),
-            ("Aluminum drink can", "RECYCLE",
-             "Aluminum is a recyclable metal that can be reused many times.",
-             "This is metal material, which doesn't belong here."),
-            ("Clean plastic bottle", "RECYCLE",
-             "Clean plastic bottles are recyclable materials in many programs.",
-             "This is rigid plastic material, which doesn't belong here."),
-            ("Clean cardboard sleeve", "RECYCLE",
-             "Clean cardboard fibers can be recycled into new paper products.",
-             "This is clean paper/cardboard material, which doesn't belong here."),
-            ("Glass sauce bottle", "RECYCLE",
-             "Glass containers can be melted and reused through recycling systems.",
-             "This is glass material, which doesn't belong here."),
-            ("Plastic soy sauce packet", "LANDFILL",
-             "This is multi-layer plastic film that usually cannot be recycled curbside.",
-             "This is thin plastic film material, which doesn't belong here."),
-            ("Plastic wrap film", "LANDFILL",
-             "Plastic film is not commonly accepted in curbside recycling.",
-             "This is soft plastic film material, which doesn't belong here."),
-            ("Greasy takeout container", "LANDFILL",
-             "Food-contaminated plastic often cannot be recycled.",
-             "This contains greasy plastic material, which doesn't belong here."),
-            ("Styrofoam tray", "LANDFILL",
-             "Foam containers are rarely recyclable in standard programs.",
-             "This is foam plastic material, which doesn't belong here."),
-            ("Battery (kitchen timer)", "SPECIAL",
-             "Batteries contain chemicals and metals that require special disposal.",
-             "This contains hazardous battery materials, which don't belong here."),
-            ("Broken light bulb", "SPECIAL",
-             "Some light bulbs contain sensitive materials that require special handling.",
-             "This contains fragile or sensitive materials, which don't belong here."),
-            ("Old POS device", "SPECIAL",
-             "Electronics contain metals and components that must be recycled properly.",
-             "This contains electronic components and metals, which don't belong here."),
-            ("Rechargeable battery pack", "SPECIAL",
-             "Rechargeable batteries require proper disposal to prevent fire risk.",
-             "This contains rechargeable battery materials, which don't belong here."),
-        ]
+                ("Banana", "COMPOST", "Banana peels are organic and break down naturally in compost.", "This is organic waste, it doesn't belong here."),
+                ("Apple", "COMPOST", "Apple cores are organic food waste perfect for composting.", "This is organic waste, it doesn't belong here."),
+                ("Fish tail", "COMPOST", "Fish tails are organic and can be composted.", "This is organic waste, it doesn't belong here."),
+                ("Aluminum can", "RECYCLE", "Aluminum cans are recyclable!", "This is recyclable metal, it doesn't belong here."),
+                ("Plastic bottle", "RECYCLE", "Clean plastic bottles can be recycled.", "This is recyclable plastic, it doesn't belong here."),
+                ("Shrink Wrap", "RECYCLE", "Shrink wrap is recyclable.", "This is recyclable plastic, it doesn't belong here."),
+                ("Battery", "SPECIAL", "Batteries need special disposal to prevent chemical leaks.", "This is hazardous, it doesn't belong here."),
+                ("Banana", "COMPOST", "Banana peels are organic and break down naturally in compost.", "This is organic waste, it doesn't belong here."),
+                ("Apple", "COMPOST", "Apple cores are organic food waste perfect for composting.", "This is organic waste, it doesn't belong here."),
+                ("Fish tail", "COMPOST", "Fish tails are organic and can be composted.", "This is organic waste, it doesn't belong here."),
+                ("Aluminum can", "RECYCLE", "Aluminum cans are recyclable!", "This is recyclable metal, it doesn't belong here."),
+                ("Plastic bottle", "RECYCLE", "Clean plastic bottles can be recycled.", "This is recyclable plastic, it doesn't belong here."),
+                ("Shrink Wrap", "RECYCLE", "Shrink wrap is recyclable.", "This is recyclable plastic, it doesn't belong here."),
+                ("Battery", "SPECIAL", "Batteries need special disposal to prevent chemical leaks.", "This is hazardous, it doesn't belong here."),
+            ]
         rng.shuffle(sushiTrashBank)
         items = []
         iid = 1
@@ -209,9 +211,9 @@ def newGame(seed=None):
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const DIALOGUE = [
   { speaker: "Bear", text: "Welcome to the recycling station! After a big sushi day, there's a lot of waste to handle." },
-  { speaker: "Bear", text: "Not everything goes in the same bin — the wrong choice can hurt the environment!" },
+  { speaker: "Bear", text: "Not everything goes in the same bin, the wrong choice can hurt the environment!" },
   { speaker: "Narrator", text: "Drag each item into the correct bin: Compost, Recycle, Landfill, or Special waste." },
-  { speaker: "Narrator", text: "Sort faster for a speed bonus. Watch out for special waste — wrong placement costs more points!" },
+  { speaker: "Narrator", text: "Sort faster for a speed bonus. Watch out for special waste, wrong placement costs more points!" },
 ];
 
 const BIN_COLORS = {
@@ -235,8 +237,8 @@ function toJS(x) {
 }
 
 function calcStars(score, misses, criticalMisses) {
-  if (criticalMisses === 0 && misses === 0) return 3;
-  if (criticalMisses === 0 && misses <= 2) return 2;
+  if (score >= 1000) return 3;
+  if (score >= 500) return 2;
   return 1;
 }
 
@@ -279,18 +281,21 @@ export default function RecycleGame() {
   const tickRef = useRef(null);
 
   // ── Layout ────────────────────────────────────────────────────────────────────
-  function layoutItems(pyItems) {
-    const cols = 4;
-    const itemW = 130, itemH = 56, gapX = 14, gapY = 12;
-    const startX = 16, startY = 60;
-    setItems(pyItems.map((it, idx) => {
-      const r = Math.floor(idx / cols);
-      const c = idx % cols;
-      const x = startX + c * (itemW + gapX);
-      const y = startY + r * (itemH + gapY);
-      return { ...it, x, y, homeX: x, homeY: y, w: itemW, h: itemH };
-    }));
-  }
+function layoutItems(pyItems) {
+  const cols = 4;
+  const itemW = 130, itemH = 56, gapX = 14, gapY = 12;
+  const startX = 16, startY = 60;
+  setItems(pyItems.map((it, idx) => {
+    const r = Math.floor(idx / cols);
+    const c = idx % cols;
+    const x = startX + c * (itemW + gapX);
+    const y = startY + r * (itemH + gapY);
+    // Match by name to get the right image
+    const bankItem = ITEM_BANK.find(b => b.name === it.name) 
+      ?? ITEM_BANK.find(b => b.category === it.category);
+    return { ...it, x, y, homeX: x, homeY: y, w: itemW, h: itemH, img: bankItem?.img ?? trash2Img };
+  }));
+}
 
   // ── Load Pyodide ──────────────────────────────────────────────────────────────
   function initGame(py) {
@@ -494,7 +499,7 @@ syncPlaced(newState.items);
       } else {
         setFeedback({ text: "✖ Not quite. " + drop.message, type: "wrong" });
       }
-      setTimeout(() => setFeedback(null), 4000);
+      setTimeout(() => setFeedback(null), 6000);
     }
 
     // snap back if not placed
@@ -692,7 +697,11 @@ function onTouchMove(e) {
       {/* ── Feedback hint bar — bottom center, like FishPrepGame ── */}
       {gameStarted && feedback && (
         <div style={{
-          position: "fixed", bottom: "650px", left: "50%", transform: "translateX(-50%)",
+          position: "fixed", 
+          top: "84px",
+          //bottom: "650px", 
+          left: "50%", 
+          transform: "translateX(-50%)",
           fontSize: "0.88rem", fontWeight: 700, letterSpacing: "0.5px", zIndex: 15,
           whiteSpace: "nowrap", pointerEvents: "none",
           textShadow: "0 1px 4px rgba(0,0,0,0.4)",
@@ -715,7 +724,7 @@ function onTouchMove(e) {
       {/* ── Main layout: left panel + right bins ── */}
       <div style={{
         flex: 1, display: "flex", flexDirection: "row",
-        gap: "22px", padding: "140px 30px 60px",
+        gap: "20px", padding: "140px 60px 80px",
         overflow: "hidden",
       }}>
 
@@ -736,7 +745,7 @@ function onTouchMove(e) {
 <div style={{
   display: "grid",
   gridTemplateColumns: "repeat(3, 1fr)", // for how many colss we want for items
-  gap: "6px",
+  gap: "10px",
   flex: 1,
   alignContent: "start",
   overflowY: "auto",
@@ -762,13 +771,12 @@ function onTouchMove(e) {
           boxShadow: "0 3px 8px rgba(0,0,0,0.25)",
           padding: "4px",
         }}
-      >
-        <img
-          src={ITEM_IMAGES[item.category]}
-          alt={item.name}
-          draggable={false}
-          style={{ height: "100%", objectFit: "contain" }}
-        />
+      ><img
+  src={item.img}
+  alt={item.name}
+  draggable={false}
+  style={{ height: "100%", objectFit: "contain" }}
+/>
         
       </div>
     );
@@ -782,42 +790,50 @@ function onTouchMove(e) {
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
           gridTemplateRows: "1fr 1fr",
-          gap: "16px",
+          gap: "2px",
+          overflow: "visible", 
         }}>
-          {["COMPOST", "RECYCLE", "LANDFILL", "SPECIAL"].map((cat) => { // IMAGES for bins could be added here instead of colored boxes
-            const rgb = BIN_RGB[cat];
-            return (
-              <div
-                key={cat}
-                data-bin={cat}
-                style={{
-                  borderRadius: "14px",
-                  border: `2px solid #eee`,
-                  background: rgb,
-                  display: "flex", flexDirection: "column",
-                  padding: "12px 14px",
-                  position: "relative",
-                  overflow: "hidden",
-                }}
-              >
-                <div style={{ fontSize: "700 18px system-ui", fontWeight: "bold", fontSize: "18px" }}>
-                  {cat}
-                </div>
-                {/* inner dark drop area */}
-                <div style={{
-                  flex: 1, marginTop: "10px",
-                  background:  "rgba(255,255,255,0.25)",
-                  borderRadius: "10px",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "13px", color: "#555",
-                }}>
-                  {items.filter(it => it.placed && it.category === cat).length > 0
-                    ? `${items.filter(it => it.placed && it.category === cat).length} sorted`
-                    : "drop here"}
-                </div>
-              </div>
-            );
-          })}
+{["COMPOST", "RECYCLE", "LANDFILL", "SPECIAL"].map((cat) => {
+  const placedCount = items.filter(it => it.placed && it.category === cat).length;
+  return (
+    <div
+      key={cat}
+      data-bin={cat}
+      style={{
+        borderRadius: "14px",
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "flex-end",
+        position: "relative",
+        overflow: "hidden",
+        cursor: "default",
+      }}
+    ><img
+  src={BIN_IMAGES[cat]}
+  alt={cat}
+  draggable={false}
+  style={{
+    width: "150%",
+    height: "140%",
+    maxHeight: "160%",
+    objectFit: "contain",
+    objectPosition: "center",
+    pointerEvents: "none",
+  }}
+/>
+      {placedCount > 0 && (
+        <div style={{
+          position: "absolute", bottom: "8px",
+          background: "rgba(0,0,0,0.55)",
+          color: "white", borderRadius: "20px",
+          padding: "3px 12px", fontSize: "13px",
+          fontFamily: "'Fredoka One', cursive",
+        }}>
+          {placedCount} sorted
+        </div>
+      )}
+    </div>
+  );
+})}
         </div>
       </div>
 

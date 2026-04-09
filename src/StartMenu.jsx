@@ -182,18 +182,18 @@ export default function StartMenu() {
           padding: "12px",
           borderRadius: "16px",
           border: "none",
-          background: "rgba(0, 0, 0, 0.6)",
+          background: "rgba(228, 145, 215, 0.6)",
           color: "white",
           fontSize: "18px",
           fontFamily: "'Fredoka One', cursive",
           cursor: "pointer",
           zIndex: 1,
           transition: "transform 0.15s ease",
-          boxShadow: "0 6px 12px rgba(0,0,0,0.4)",
+          //boxShadow: "0 6px 12px rgba(0,0,0,0.4)",
           backdropFilter: "blur(6px)",
         }}
       >
-        Leaderboard
+        LEADERBOARD
       </button>
       
 
