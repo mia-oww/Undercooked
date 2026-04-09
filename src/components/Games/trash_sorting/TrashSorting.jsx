@@ -4,7 +4,18 @@ import { saveLevelResult } from "../../../utils/levelProgress";
 import blankHoneyImg from "../../../assets/sprites/fish-prep/blankhoney.png";
 import filledHoneyImg from "../../../assets/sprites/fish-prep/honey2.png";
 import wavingBearImg from "../../../assets/sprites/river-game-sprites/wavingbear.png";
+import homescreenImg from "../../../assets/trees_background1.png"; 
+import trash2Img from "../../../assets/sprites/river-game-sprites/trash2.png";
+import trash3Img from "../../../assets/sprites/river-game-sprites/trash3.png";
+import trash4Img from "../../../assets/sprites/river-game-sprites/trash4.png";
+import trashcanImg from "../../../assets/sprites/river-game-sprites/trashcan.png";
 
+const ITEM_IMAGES = {
+  COMPOST:  trash2Img,
+  RECYCLE:  trash3Img,
+  LANDFILL: trash4Img,
+  SPECIAL:  trashcanImg,
+};
 
 // ─── Pyodide / Python game logic ──────────────────────────────────────────────
 const PYODIDE_CDN = "https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js";
@@ -471,7 +482,7 @@ export default function RecycleGame() {
       onTouchEnd={onTouchEnd}
       style={{
         width: "100vw", height: "100vh", overflow: "hidden",
-        background: "#111118",
+        background: `url(${homescreenImg}) center/cover no-repeat`,
         fontFamily: "system-ui, -apple-system, sans-serif",
         display: "flex", flexDirection: "column",
         userSelect: "none", color: "#eee",
@@ -598,56 +609,54 @@ export default function RecycleGame() {
         {/* ── Left: items panel ── */}
         <div style={{
           width: "520px", flexShrink: 0,
-          background: "#1b1b24",
+          background: "#e6e6e6",
           borderRadius: "14px",
           border: "1px solid #2a2a38",
           padding: "14px",
           display: "flex", flexDirection: "column",
           overflow: "hidden",
         }}>
-          <div style={{ fontSize: "13px", color: "#bdbdd3", marginBottom: "10px" }}>
+          <div style={{ fontSize: "13px", color: "#111111", marginBottom: "10px" }}>
             Drag items into matching bins. Faster finish = more points.
             &nbsp;+100 correct, -50 wrong, -150 critical. &nbsp;+10 bonus per streak.
           </div>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "8px",
-            flex: 1,
-            alignContent: "start",
-          }}>
-            {items.map((item) => {
-              const rgb = BIN_RGB[item.category];
-              const isDragging = draggingId === item.id;
-              return (
-                <div
-                  key={item.id}
-                  onMouseDown={(e) => onMouseDown(e, item)}
-                  onTouchStart={(e) => onTouchStart(e, item)}
-                  style={{
-                    height: "52px",
-                    borderRadius: "12px",
-                    background: item.placed ? "rgba(255,255,255,0.04)" : rgb,
-                    border: "2px solid #eee",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "700 15px system-ui",
-                    fontWeight: "bold",
-                    color: "#fff",
-                    cursor: item.placed ? "default" : "grab",
-                    opacity: item.placed ? 0.28 : isDragging ? 0.5 : 1,
-                    pointerEvents: item.placed ? "none" : "auto",
-                    boxShadow: "0 4px 8px rgba(0,0,0,0.35)",
-                    position: "relative",
-                    fontSize: "13px",
-                    textAlign: "center",
-                    padding: "0 6px",
-                  }}
-                >
-                  {item.category[0]}
-                </div>
-              );
-            })}
-          </div>
+<div style={{
+  display: "grid",
+  gridTemplateColumns: "repeat(4, 1fr)",
+  gap: "8px",
+  flex: 1,
+  alignContent: "start",
+}}>
+  {items.map((item) => {
+    const isDragging = draggingId === item.id;
+    return (
+      <div
+        key={item.id}
+        onMouseDown={(e) => onMouseDown(e, item)}
+        onTouchStart={(e) => onTouchStart(e, item)}
+        style={{
+          height: "60px",
+          borderRadius: "10px",
+          background: item.placed ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.15)",
+          border: "2px solid rgba(255,255,255,0.3)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: item.placed ? "default" : "grab",
+          opacity: item.placed ? 0.25 : isDragging ? 0.5 : 1,
+          pointerEvents: item.placed ? "none" : "auto",
+          boxShadow: "0 3px 8px rgba(0,0,0,0.25)",
+          padding: "4px",
+        }}
+      >
+        <img
+          src={ITEM_IMAGES[item.category]}
+          alt={item.name}
+          draggable={false}
+          style={{ height: "100%", objectFit: "contain" }}
+        />
+      </div>
+    );
+  })}
+</div>
         </div>
 
         {/* ── Right: 2x2 bins ── */}
@@ -658,7 +667,7 @@ export default function RecycleGame() {
           gridTemplateRows: "1fr 1fr",
           gap: "16px",
         }}>
-          {["COMPOST", "RECYCLE", "LANDFILL", "SPECIAL"].map((cat) => {
+          {["COMPOST", "RECYCLE", "LANDFILL", "SPECIAL"].map((cat) => { // IMAGES for bins could be added here instead of colored boxes
             const rgb = BIN_RGB[cat];
             return (
               <div
@@ -680,7 +689,7 @@ export default function RecycleGame() {
                 {/* inner dark drop area */}
                 <div style={{
                   flex: 1, marginTop: "10px",
-                  background: "#1b1b24",
+                  background: "#e9e9e9",
                   borderRadius: "10px",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: "13px", color: "#555",
