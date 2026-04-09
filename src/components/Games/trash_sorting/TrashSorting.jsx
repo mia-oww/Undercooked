@@ -330,16 +330,15 @@ export default function RecycleGame() {
   }
 
   // ── Tick (update elapsed time display) ───────────────────────────────────────
-  useEffect(() => {
-    if (!pyReady || !gameStarted) return;
-    const id = setInterval(() => {
-      if (!gameObjRef.current || !gameState?.started || gameState?.finished) return;
-      const state = toJS(gameObjRef.current.asDict(nowMs()));
-      setGameState(state);
-    }, 500);
-    return () => clearInterval(id);
-  }, [pyReady, gameStarted, gameState?.started, gameState?.finished]);
-
+useEffect(() => {
+  if (!pyReady || !gameStarted) return;
+  const id = setInterval(() => {
+    if (!gameObjRef.current || !gameState?.started || gameState?.finished || showResults) return;
+    const state = toJS(gameObjRef.current.asDict(nowMs()));
+    setGameState(state);
+  }, 500);
+  return () => clearInterval(id);
+}, [pyReady, gameStarted, gameState?.started, gameState?.finished, showResults]);
   // ── Finish → show results ─────────────────────────────────────────────────────
 useEffect(() => {
   if (!gameState?.finished || showResults) return;
@@ -988,55 +987,103 @@ function onTouchMove(e) {
       )}
 
       {/* ── Results screen ── */}
-      {showResults && (
+{showResults && (
+  <div style={{
+    position: "fixed", inset: 0, zIndex: 400,
+    display: "flex", alignItems: "center", justifyContent: "center",
+  }}>
+    <div style={{
+      width: "65vw", maxWidth: "860px",
+      background: "rgba(255,255,255,0.82)",
+      borderRadius: "35px", padding: "50px",
+      backdropFilter: "blur(18px)",
+      boxShadow: "0 25px 50px rgba(0,0,0,0.18)",
+      fontFamily: "'Fredoka One', cursive",
+      textAlign: "center",
+    }}>
+      <h1 style={{ fontSize: "clamp(28px,5vw,52px)", margin: "0 0 8px", color: "#2c2316" }}>
+        {lives <= 0 ? "Out of Lives!" : "Sorting Complete!"}
+      </h1>
+
+      <div style={{
+        fontSize: "14px", letterSpacing: "2px", opacity: 0.6,
+        textTransform: "uppercase", marginBottom: "4px", color: "#5a4a35",
+      }}>
+        Rating
+      </div>
+
+      <div style={{ display: "flex", gap: "8px", justifyContent: "center", margin: "18px 0" }}>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={`honey${honeyEarned[i] ? " earned" : ""}${honeyPop[i] ? " pop" : ""}`}>
+            <img src={honeyEarned[i] ? filledHoneyImg : blankHoneyImg} alt="" />
+          </div>
+        ))}
+      </div>
+
+      <div style={{
+        display: "flex", justifyContent: "center",
+        gap: "32px", margin: "18px 0 32px", flexWrap: "wrap",
+      }}>
         <div style={{
-          position: "fixed", inset: 0, zIndex: 400,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.6)",
+          background: "#e8e1cf", borderRadius: "22px",
+          padding: "18px 32px", boxShadow: "0 8px 15px rgba(0,0,0,0.1)",
         }}>
-          <div style={{
-            width: "min(520px, 90vw)",
-            background: "#1b1b24",
-            border: "1px solid #3a3a52",
-            borderRadius: "18px", padding: "40px 36px",
-            textAlign: "center",
-            boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
-          }}>
-            <div style={{ fontSize: "26px", marginBottom: "6px" }}>You finished!</div>
-            <div style={{ fontSize: "14px", color: "#bdbdd3", marginBottom: "4px" }}>
-              Time: {elapsed}s &nbsp;|&nbsp; Final score: {gameState?.score}
-            </div>
-            <div style={{ fontSize: "13px", color: "#888", marginBottom: "20px" }}>
-              Misses: {gameState?.misses} &nbsp;|&nbsp; Critical: {gameState?.criticalMisses}
-            </div>
-
-            <div style={{ display: "flex", gap: "10px", justifyContent: "center", margin: "16px 0" }}>
-              {[0, 1, 2].map((i) => (
-                <img key={i} src={honeyEarned[i] ? filledHoneyImg : blankHoneyImg} alt=""
-                  className={`honey-jar${honeyPop[i] ? " pop" : ""}`}
-                  style={{ opacity: honeyEarned[i] ? 1 : 0.25 }} />
-              ))}
-            </div>
-
-            <div style={{ fontSize: "14px", color: "#bdbdd3", marginBottom: "24px" }}>
-              {finalStars === 3 && "Perfect sorting! Zero waste champion 🏆"}
-              {finalStars === 2 && "Great job! A few small mistakes."}
-              {finalStars === 1 && "Good start — keep learning the categories!"}
-            </div>
-
-            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
-              <button onClick={() => navigate("/level-selection")} style={{
-                background: "#2d2d3f", color: "#eee", border: "1px solid #3a3a52",
-                padding: "10px 24px", borderRadius: "10px", cursor: "pointer", fontSize: "14px",
-              }}>Level Menu</button>
-              <button onClick={handleReset} style={{
-                background: "#3a3a52", color: "#eee", border: "1px solid #555",
-                padding: "10px 24px", borderRadius: "10px", cursor: "pointer", fontSize: "14px",
-              }}>Play Again ↺</button>
-            </div>
+          <div style={{ fontSize: "14px", letterSpacing: "2px", opacity: 0.6, color: "#5a4a35" }}>SCORE</div>
+          <div style={{ fontSize: "clamp(28px,4vw,42px)", color: "#5a4a35" }}>
+            {gameState?.score ?? 0}
           </div>
         </div>
-      )}
+        <div style={{
+          background: "#e8e1cf", borderRadius: "22px",
+          padding: "18px 32px", boxShadow: "0 8px 15px rgba(0,0,0,0.1)",
+        }}>
+          <div style={{ fontSize: "14px", letterSpacing: "2px", opacity: 0.6, color: "#5a4a35" }}>TIME</div>
+          <div style={{ fontSize: "clamp(28px,4vw,42px)", color: "#5a4a35" }}>
+            {elapsed}s
+          </div>
+        </div>
+        <div style={{
+          background: "#e8e1cf", borderRadius: "22px",
+          padding: "18px 32px", boxShadow: "0 8px 15px rgba(0,0,0,0.1)",
+        }}>
+          <div style={{ fontSize: "14px", letterSpacing: "2px", opacity: 0.6, color: "#5a4a35" }}>SORTED</div>
+          <div style={{ fontSize: "clamp(28px,4vw,42px)", color: "#5a4a35" }}>
+            {gameState?.placedCount ?? 0}/{gameState?.totalItems ?? 16}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "center", gap: "16px", flexWrap: "wrap" }}>
+        <button
+          onClick={() => navigate("/level-selection")}
+          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+          style={{
+            padding: "14px 38px", fontSize: "20px", borderRadius: "18px",
+            border: "none", backgroundColor: "#e8e1cf", color: "#3d2e1e",
+            cursor: "pointer", boxShadow: "0 8px 15px rgba(0,0,0,0.15)",
+            fontFamily: "'Fredoka One', cursive", transition: "transform 0.1s ease",
+          }}
+        >
+          ← Level Menu
+        </button>
+        <button
+          onClick={handleReset}
+          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+          style={{
+            padding: "14px 38px", fontSize: "20px", borderRadius: "18px",
+            border: "none", backgroundColor: "#7FBF3F", color: "white",
+            cursor: "pointer", boxShadow: "0 8px 15px rgba(0,0,0,0.15)",
+            fontFamily: "'Fredoka One', cursive", transition: "transform 0.1s ease",
+          }}
+        >
+          Play Again ↺
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
 
             {showSettings && (
