@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+  <link rel="icon" href="data:," />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sorting Game (Web)</title>
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#111; color:#eee; }
+    .bar { display:flex; gap:16px; align-items:center; padding:12px 14px; background:#1b1b24; border-bottom:1px solid #2a2a38; }
+    button { background:#2d2d3f; color:#eee; border:1px solid #3a3a52; padding:8px 12px; border-radius:10px; cursor:pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Center the game container (canvas + feedback under it) */
+    #wrap { display:flex; justify-content:center; padding:12px; }
+
+    /* Keep the feedback UNDER the canvas without affecting layout */
+    #gameContainer { display:inline-block; }
+
+    canvas { background:#15151c; border:1px solid #2a2a38; border-radius:14px; display:block; }
+
+    /* Simple single-line feedback under the game */
+    #factBox {
+      margin-top: 12px;
+      font-size: 15px;
+      min-height: 22px;   /* prevents layout jump */
+      padding: 0;
+    }
+
+    .fact-correct { color: #3dbb6a; }
+    .fact-wrong { color: #d05c5c; }
+
+    /* Critical mistakes: more pronounced */
+    .fact-critical {
+      color: #ff4d4d;
+      font-weight: 700;
+      font-size: 17px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <b>Sorting Game (Web)</b>
+    <span id="status">Loading Python...</span>
+    <button id="resetBtn" disabled>Reset</button>
+  </div>
+
+  <div id="wrap">
+    <div id="gameContainer">
+      <canvas id="game" width="1000" height="650"></canvas>
+      <div id="factBox"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
