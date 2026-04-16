@@ -719,6 +719,7 @@ export default function RiverGame() {
     return ((startX - CATCH_X) / (startX - endX)) * dur;
   }, []);
 
+  const [hasPlayed, setHasPlayed] = useState(false);
   const endGame = useCallback(
     async (timeUp = false) => {
       const s = stateRef.current;
@@ -1040,6 +1041,7 @@ export default function RiverGame() {
   }, [resumeGame]);
 
   const startGame = useCallback(() => {
+    setHasPlayed(true);
     const s = stateRef.current;
     s.score = 0;
     s.lives = 3;
@@ -1415,7 +1417,7 @@ export default function RiverGame() {
       )}
 
       {/* ── Intro dialogue — zIndex 50 ── */}
-      {introReady && !gameStarted && !endScreen && (
+      {introReady && !gameStarted && !endScreen && !hasPlayed && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50 }}>
           <button
             onClick={() => { setDialogueIndex(0); startGame(); }}
