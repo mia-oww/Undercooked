@@ -918,7 +918,7 @@ export default function RecycleGame() {
           width: "420px", flexShrink: 0,
           background: "rgba(255,255,255,0.25)",
           borderRadius: "14px",
-          border: "1px solid #5fb3de",
+          //border: "1px solid #5fb3de",
           padding: "12px",
           display: "flex", flexDirection: "column",
           overflow: "hidden",
@@ -942,15 +942,14 @@ export default function RecycleGame() {
                   onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
                   style={{
                     height: `${item.h}px`,
-                    borderRadius: "10px",
-                    background: item.placed ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.15)",
-                    border: "2px solid rgba(255,255,255,0.3)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     cursor: item.placed ? "default" : "grab",
                     opacity: item.placed ? 0.25 : isDragging ? 0.5 : 1,
                     pointerEvents: item.placed ? "none" : "auto",
-                    boxShadow: "0 3px 8px rgba(0,0,0,0.25)",
-                    padding: "4px",
+                    background: "transparent",
+                    border: "none",
+                    boxShadow: "none",
+                    padding: "0",
                   }}
                 >
                   <img
@@ -1030,12 +1029,11 @@ export default function RecycleGame() {
             top: ghostPos.y - item.h / 2,
             width: `${item.w}px`,
             height: `${item.h}px`,
-            borderRadius: "14px",
             display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
             pointerEvents: "none", zIndex: 9999,
             transform: "scale(1.05)",
-            background: "rgba(255,255,255,0.06)",
+            background: "transparent",
+            boxShadow: "none",
           }}>
             <img
               src={item.img}
