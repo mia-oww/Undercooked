@@ -6,6 +6,8 @@ import Settings from "../Settings";
 import { saveLevelResult } from "../../utils/levelProgress";
 import { supabase } from "../../supabase";
 
+import LoadingScreen from "../../LoadingScreen"; // LOADING SCREEN IF IT TAKES FOREVER TO LOAD
+
 // ── Asset imports ────────────────────────────────────────────────────────────
 import grassImg from "../../assets/sprites/river-game-sprites/grass.png";
 import trashcanImg from "../../assets/sprites/river-game-sprites/trashcan.png";
@@ -29,6 +31,7 @@ import plasticBottle from "../../assets/sprites/trash-sorting/plastic_bottle.png
 import compostBottle from "../../assets/sprites/trash-sorting/compost_bottle.png";
 import plasticBag from "../../assets/sprites/trash-sorting/plastic_bag.png";
 import sodaCan from "../../assets/sprites/trash-sorting/soda_can.png";
+
 
 const A = {
   grass: grassImg,
@@ -414,6 +417,7 @@ export default function RiverGame() {
   const [introReady, setIntroReady] = useState(false);
   const [endScreen, setEndScreen] = useState(null);
   const [honeyStars, setHoneyStars] = useState([false, false, false]);
+  const [loading, setLoading] = useState(true);
 
   const stateRef = useRef({
     score: 0,
@@ -1124,14 +1128,15 @@ export default function RiverGame() {
           if (!error && profile?.level > currentLevelId) {
             startGame();
             setIntroReady(true);
+            setLoading(false);
             return;
           }
         }
       } catch (error) {
         console.error("Failed to check intro skip:", error);
       }
-
       setIntroReady(true);
+      setLoading(false)
     }
 
     checkSkipIntro();
@@ -1236,6 +1241,7 @@ export default function RiverGame() {
 
   return (
     <div id="rr-root">
+      <LoadingScreen isLoading={loading} />
       <img src={A.grass} id="rr-bg" alt="" />
 
       <div id="rr-scene" ref={sceneRef}>
