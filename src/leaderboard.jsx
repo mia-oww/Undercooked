@@ -63,6 +63,12 @@ export default function LeaderboardPage() {
     lastRank = rank;
   }
 
+  function formatPlayerName(user) {
+    const rawName = user.display_name || "Anonymous";
+    const medal = user.rank === 1 ? "🥇" : user.rank === 2 ? "🥈" : user.rank === 3 ? "🥉" : "";
+    return medal ? `${medal} ${rawName} ${medal}` : rawName;
+  }
+
   return (
     <div>
       <img
@@ -168,7 +174,7 @@ export default function LeaderboardPage() {
                   whiteSpace: "nowrap",
                 }}
               >
-                {user.display_name || "Anonymous"}
+                {formatPlayerName(user)}
               </div>
 
               <div style={{ width: "35%", textAlign: "right", color: "#2ecc71" }}>
