@@ -71,8 +71,8 @@ const CFG = {
 
 const TRASH_SZ_MIN = 42;
 const TRASH_SZ_MAX = 88;
-const FISH_SZ_MIN = 52;
-const FISH_SZ_MAX = 74;
+const FISH_SZ_MIN = 72;
+const FISH_SZ_MAX = 102;
 const ITEM_MIN_Y_SEP = 70;
 const MIN_ARRIVAL_GAP_MS = 900;
 const CATCHER_HALF = 36;
