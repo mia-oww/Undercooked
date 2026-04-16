@@ -53,10 +53,10 @@ const ITEM_IMAGES = {
   "Plastic bag": plasticBag
 };
 const CATEGORY_IMAGE_POOLS = {
-  COMPOST: [bananaImg, appleImg, fishtailImg, compostBottle],   // add more compost images here
-  RECYCLE: [trash3Img, trash2Img, plasticBottle, plasticBag, sodaCan],                         // add more recycle images here
-  LANDFILL: [trash4Img ],                        // add more landfill images here
-  SPECIAL: [batteryImg],                       // add more special images here
+  COMPOST: [bananaImg, appleImg, fishtailImg, compostBottle],
+  RECYCLE: [trash3Img, trash2Img, plasticBottle, plasticBag, sodaCan],
+  LANDFILL: [trash4Img ],
+  SPECIAL: [batteryImg],
 };
 const BIN_IMAGES = {
     COMPOST: compostBinImg,
@@ -293,7 +293,7 @@ function QuitConfirmModal({ onConfirm, onCancel }) {
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 80,
+        zIndex: 600,  // above everything
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -359,7 +359,7 @@ export default function RecycleGame() {
 
   // for lives
   const [lives, setLives] = useState(3);
-    const [showSettings, setShowSettings] = useState(false);    
+  const [showSettings, setShowSettings] = useState(false);    
   // Dialogue
   const [dialogueIndex, setDialogueIndex] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
@@ -374,11 +374,11 @@ export default function RecycleGame() {
 
   // Game state (JS mirror of Python state)
   const [gameState, setGameState] = useState(null);
-  const [items, setItems] = useState([]); // {id, name, category, placed, x, y, homeX, homeY}
-  const [feedback, setFeedback] = useState(null); // {text, type: "correct"|"wrong"|"critical"}
+  const [items, setItems] = useState([]);
+  const [feedback, setFeedback] = useState(null);
 
   // Drag
-  const draggingRef = useRef(null); // {id, offX, offY}
+  const draggingRef = useRef(null);
   const [draggingId, setDraggingId] = useState(null);
   const [ghostPos, setGhostPos] = useState({ x: 0, y: 0 });
 
@@ -390,35 +390,32 @@ export default function RecycleGame() {
 
   // Canvas / layout refs
   const containerRef = useRef(null);
-  //const animFrameRef = useRef(null);
-  //const tickRef = useRef(null);
 
   // ── Layout ────────────────────────────────────────────────────────────────────
-function layoutItems(pyItems) {
-  const cols = 4;
-  const itemW = 130, itemH = 56, gapX = 14, gapY = 12;
-  const startX = 16, startY = 60;
-  setItems(pyItems.map((it, idx) => {
-    const sizeOverride = ITEM_SIZE_OVERRIDES[it.name?.toLowerCase?.()] ?? { w: itemW, h: itemH };
-    const r = Math.floor(idx / cols);
-    const c = idx % cols;
-    const x = startX + c * (itemW + gapX);
-    const y = startY + r * (itemH + gapY);
-    // Match by name to get the right image
-    const bankItem = ITEM_BANK.find(b => b.name === it.name) 
-      ?? ITEM_BANK.find(b => b.category === it.category);
-    return {
-      ...it,
-      x,
-      y,
-      homeX: x,
-      homeY: y,
-      w: sizeOverride.w,
-      h: sizeOverride.h,
-      img: bankItem?.img ?? trash2Img,
-    };
-  }));
-}
+  function layoutItems(pyItems) {
+    const cols = 4;
+    const itemW = 130, itemH = 56, gapX = 14, gapY = 12;
+    const startX = 16, startY = 60;
+    setItems(pyItems.map((it, idx) => {
+      const sizeOverride = ITEM_SIZE_OVERRIDES[it.name?.toLowerCase?.()] ?? { w: itemW, h: itemH };
+      const r = Math.floor(idx / cols);
+      const c = idx % cols;
+      const x = startX + c * (itemW + gapX);
+      const y = startY + r * (itemH + gapY);
+      const bankItem = ITEM_BANK.find(b => b.name === it.name) 
+        ?? ITEM_BANK.find(b => b.category === it.category);
+      return {
+        ...it,
+        x,
+        y,
+        homeX: x,
+        homeY: y,
+        w: sizeOverride.w,
+        h: sizeOverride.h,
+        img: bankItem?.img ?? trash2Img,
+      };
+    }));
+  }
 
   // ── Load Pyodide ──────────────────────────────────────────────────────────────
   function initGame(py) {
@@ -457,121 +454,126 @@ function layoutItems(pyItems) {
     setItems(prev => prev.map(it => ({ ...it, placed: map.get(it.id) ?? it.placed })));
   }
 
-  // ── Tick (update elapsed time display) ───────────────────────────────────────
-useEffect(() => {
-  if (!pyReady || !gameStarted) return;
-  const id = setInterval(() => {
-    if (!gameObjRef.current || !gameState?.started || gameState?.finished || showResults) return;
-    const state = toJS(gameObjRef.current.asDict(nowMs()));
-    setGameState(state);
-  }, 500);
-  return () => clearInterval(id);
-}, [pyReady, gameStarted, gameState?.started, gameState?.finished, showResults]);
+  // ── Tick ─────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!pyReady || !gameStarted) return;
+    const id = setInterval(() => {
+      if (!gameObjRef.current || !gameState?.started || gameState?.finished || showResults) return;
+      const state = toJS(gameObjRef.current.asDict(nowMs()));
+      setGameState(state);
+    }, 500);
+    return () => clearInterval(id);
+  }, [pyReady, gameStarted, gameState?.started, gameState?.finished, showResults]);
 
-useEffect(() => {
-  if (!pyReady) return;
+  // ── FIX: dependency array now includes pyReady so it actually runs ────────────
+  useEffect(() => {
+    if (!pyReady) return;
 
-  async function checkSkipIntro() {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.user) return;
+    async function checkSkipIntro() {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session?.user) {
+          setIntroReady(true);
+          return;
+        }
 
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("level")
-        .eq("user_id", session.user.id)
-        .single();
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("level")
+          .eq("user_id", session.user.id)
+          .single();
 
-      if (!error && profile?.level > CURRENT_LEVEL_ID) {
-        setGameStarted(true);
-        setIntroReady(true);
-        return;
+        if (!error && profile?.level > CURRENT_LEVEL_ID) {
+          setGameStarted(true);
+          setIntroReady(true);
+          return;
+        }
+      } catch (error) {
+        console.error("Failed to check intro skip:", error);
       }
-    } catch (error) {
-      console.error("Failed to check intro skip:", error);
+
+      setIntroReady(true);
     }
 
-    setIntroReady(true);
-  }
+    checkSkipIntro();
+  }, [pyReady]); // ← was [], now [pyReady] so it runs after Pyodide loads
 
-  checkSkipIntro();
-}, []);
-  // ── Finish → show results —────────────────────────────────────────────────────
-useEffect(() => {
-  if (!gameState?.finished || showResults) return;
-  const stars = calcStars(gameState.score, gameState.misses, gameState.criticalMisses);
-  setFinalStars(stars);
-  saveLevelResult(4, stars);
+  // ── Finish → show results ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!gameState?.finished || showResults) return;
+    const stars = calcStars(gameState.score, gameState.misses, gameState.criticalMisses);
+    setFinalStars(stars);
+    saveLevelResult(4, stars);
 
-  async function saveProgress() {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-      const { data: currentProfile, error: fetchError } = await supabase
-        .from("profiles")
-        .select("level, level4_stars, level4_score, sustain_score")
-        .eq("user_id", session.user.id)
-        .single();
-      if (fetchError || !currentProfile) return;
-      const actualScore = stars * 130;
-      const newBestStars = Math.max(currentProfile.level4_stars ?? 0, stars);
-      const newBestScore = Math.max(currentProfile.level4_score ?? 0, actualScore);
-      const nextUnlockedLevel = Math.max(currentProfile.level ?? 0, 5);
-      const currentSustainScore = currentProfile.sustain_score ?? 0;
-      const nextSustainScore = Math.max(0, currentSustainScore - (currentProfile.level4_score ?? 0) + newBestScore);
-      await supabase.from("profiles").update({
-        level4_stars: newBestStars,
-        level4_score: newBestScore,
-        level: nextUnlockedLevel,
-        sustain_score: nextSustainScore,
-        updated_at: new Date().toISOString(),
-      }).eq("user_id", session.user.id);
-    } catch (error) {
-      console.error("Failed to save progress:", error);
-    }
-  }
-  saveProgress();
-
-  setTimeout(() => {
-    setShowResults(true);
-    [0, 1, 2].forEach((i) => {
-      if (i < stars) {
-        setTimeout(() => {
-          setHoneyEarned(prev => { const n = [...prev]; n[i] = true; return n; });
-          setTimeout(() => {
-            setHoneyPop(prev => { const n = [...prev]; n[i] = true; return n; });
-            setTimeout(() => {
-              setHoneyPop(prev => { const n = [...prev]; n[i] = false; return n; });
-            }, 600);
-          }, 20);
-        }, 600 + i * 450);
+    async function saveProgress() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+        const { data: currentProfile, error: fetchError } = await supabase
+          .from("profiles")
+          .select("level, level4_stars, level4_score, sustain_score")
+          .eq("user_id", session.user.id)
+          .single();
+        if (fetchError || !currentProfile) return;
+        const actualScore = stars * 130;
+        const newBestStars = Math.max(currentProfile.level4_stars ?? 0, stars);
+        const newBestScore = Math.max(currentProfile.level4_score ?? 0, actualScore);
+        const nextUnlockedLevel = Math.max(currentProfile.level ?? 0, 5);
+        const currentSustainScore = currentProfile.sustain_score ?? 0;
+        const nextSustainScore = Math.max(0, currentSustainScore - (currentProfile.level4_score ?? 0) + newBestScore);
+        await supabase.from("profiles").update({
+          level4_stars: newBestStars,
+          level4_score: newBestScore,
+          level: nextUnlockedLevel,
+          sustain_score: nextSustainScore,
+          updated_at: new Date().toISOString(),
+        }).eq("user_id", session.user.id);
+      } catch (error) {
+        console.error("Failed to save progress:", error);
       }
-    });
-  }, 800);
-}, [gameState?.finished]);
+    }
+    saveProgress();
 
-// ── Lives → game over ─────────────────────────────────────────────────────────
-useEffect(() => {
-  if (lives <= 0 && gameStarted && !showResults) {
     setTimeout(() => {
       setShowResults(true);
-      const stars = 1;
-      setFinalStars(stars);
-      saveLevelResult(4, stars);
-      setTimeout(() => {
-        setHoneyEarned(prev => { const n = [...prev]; n[0] = true; return n; });
-        setTimeout(() => {
-          setHoneyPop(prev => { const n = [...prev]; n[0] = true; return n; });
+      [0, 1, 2].forEach((i) => {
+        if (i < stars) {
           setTimeout(() => {
-            setHoneyPop(prev => { const n = [...prev]; n[0] = false; return n; });
-          }, 600);
-        }, 20);
-      }, 600);
+            setHoneyEarned(prev => { const n = [...prev]; n[i] = true; return n; });
+            setTimeout(() => {
+              setHoneyPop(prev => { const n = [...prev]; n[i] = true; return n; });
+              setTimeout(() => {
+                setHoneyPop(prev => { const n = [...prev]; n[i] = false; return n; });
+              }, 600);
+            }, 20);
+          }, 600 + i * 450);
+        }
+      });
     }, 800);
-  }
-}, [lives, gameStarted, showResults]);
+  }, [gameState?.finished]);
+
+  // ── Lives → game over ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (lives <= 0 && gameStarted && !showResults) {
+      setTimeout(() => {
+        setShowResults(true);
+        const stars = 1;
+        setFinalStars(stars);
+        saveLevelResult(4, stars);
+        setTimeout(() => {
+          setHoneyEarned(prev => { const n = [...prev]; n[0] = true; return n; });
+          setTimeout(() => {
+            setHoneyPop(prev => { const n = [...prev]; n[0] = true; return n; });
+            setTimeout(() => {
+              setHoneyPop(prev => { const n = [...prev]; n[0] = false; return n; });
+            }, 600);
+          }, 20);
+        }, 600);
+      }, 800);
+    }
+  }, [lives, gameStarted, showResults]);
 
   // ── Dialogue ──────────────────────────────────────────────────────────────────
   const isLastDialogue = dialogueIndex === DIALOGUE.length - 1;
@@ -589,7 +591,6 @@ useEffect(() => {
     const rect = containerEl.getBoundingClientRect();
     const relX = cx - rect.left;
     const relY = cy - rect.top;
-    // bins are positioned absolutely inside the game area; we query them
     const binEls = containerEl.querySelectorAll("[data-bin]");
     for (const el of binEls) {
       const br = el.getBoundingClientRect();
@@ -610,38 +611,37 @@ useEffect(() => {
   }
 
   function onMouseMove(e) {
-  if (!draggingRef.current) return;
-  e.preventDefault();
-  const dragging = draggingRef.current; // ← save it first
-  if (!dragging) return; // ← double check
-  setGhostPos({ x: e.clientX, y: e.clientY });
-  setItems(prev => prev.map(it => it.id === dragging.id ? { ...it, dragX: e.clientX, dragY: e.clientY } : it));
-}
+    if (!draggingRef.current) return;
+    e.preventDefault();
+    const dragging = draggingRef.current;
+    if (!dragging) return;
+    setGhostPos({ x: e.clientX, y: e.clientY });
+    setItems(prev => prev.map(it => it.id === dragging.id ? { ...it, dragX: e.clientX, dragY: e.clientY } : it));
+  }
 
   function onMouseUp(e) {
-  if (!draggingRef.current) return;
-  const { id } = draggingRef.current;
-  const item = items.find(it => it.id === id);
-  draggingRef.current = null;
-  setDraggingId(null);
+    if (!draggingRef.current) return;
+    const { id } = draggingRef.current;
+    const item = items.find(it => it.id === id);
+    draggingRef.current = null;
+    setDraggingId(null);
 
-  if (!item || !containerRef.current || !gameObjRef.current) return;  // ← add gameObjRef check
+    if (!item || !containerRef.current || !gameObjRef.current) return;
 
-    // find center of dragged item
     const containerRect = containerRef.current.getBoundingClientRect();
     const cx = e.clientX - containerRect.left;
     const cy = e.clientY - containerRect.top;
     const binCategory = getBinUnderPoint(cx, cy, containerRef.current) ?? "NONE";
 
-let newState;
-try {
-  newState = toJS(gameObjRef.current.dropItem(id, binCategory, nowMs()));
-} catch (err) {
-  console.error("Drop error:", err);
-  return;
-}
-setGameState(newState);
-syncPlaced(newState.items);
+    let newState;
+    try {
+      newState = toJS(gameObjRef.current.dropItem(id, binCategory, nowMs()));
+    } catch (err) {
+      console.error("Drop error:", err);
+      return;
+    }
+    setGameState(newState);
+    syncPlaced(newState.items);
 
     if (newState.lastDrop) {
       const drop = newState.lastDrop;
@@ -649,14 +649,13 @@ syncPlaced(newState.items);
         setFeedback({ text: "✔ Correct! " + drop.message, type: "correct" });
       } else if (drop.missType === "critical") {
         setFeedback({ text: "⚠ Critical! " + drop.message, type: "critical" });
-        setLives(prev => Math.max(0, prev - 1));  // ← added this line
+        setLives(prev => Math.max(0, prev - 1));
       } else {
         setFeedback({ text: "✖ Not quite. " + drop.message, type: "wrong" });
       }
       setTimeout(() => setFeedback(null), 6000);
     }
 
-    // snap back if not placed
     const placed = newState.items.find(it => it.id === id)?.placed;
     if (!placed) {
       setItems(prev => prev.map(it => it.id === id ? { ...it, x: it.homeX, y: it.homeY } : it));
@@ -670,15 +669,15 @@ syncPlaced(newState.items);
     setDraggingId(item.id);
   }
 
-function onTouchMove(e) {
-  if (!draggingRef.current) return;
-  e.preventDefault();
-  const dragging = draggingRef.current; // ← save it first
-  if (!dragging) return;
-  const touch = e.touches[0];
-  setGhostPos({ x: touch.clientX, y: touch.clientY });
-  setItems(prev => prev.map(it => it.id === dragging.id ? { ...it, dragX: touch.clientX, dragY: touch.clientY } : it));
-}
+  function onTouchMove(e) {
+    if (!draggingRef.current) return;
+    e.preventDefault();
+    const dragging = draggingRef.current;
+    if (!dragging) return;
+    const touch = e.touches[0];
+    setGhostPos({ x: touch.clientX, y: touch.clientY });
+    setItems(prev => prev.map(it => it.id === dragging.id ? { ...it, dragX: touch.clientX, dragY: touch.clientY } : it));
+  }
 
   function onTouchEnd(e) {
     if (!draggingRef.current) return;
@@ -704,12 +703,28 @@ function onTouchMove(e) {
   // ── Render ────────────────────────────────────────────────────────────────────
   const elapsed = gameState ? (gameState.elapsedMs / 1000).toFixed(2) : "0.00";
 
-  const BIN_RGB = {
-    COMPOST:  "rgb(110,200,120)",
-    RECYCLE:  "rgb(80,150,240)",
-    LANDFILL: "rgb(160,160,175)",
-    SPECIAL:  "rgb(240,120,80)",
-  };
+  // Shared settings cog button — rendered once, always on top at zIndex 550
+  const SettingsCogButton = (
+    <button
+      onClick={() => setShowSettings(true)}
+      title="Settings"
+      style={{
+        position: "fixed", top: "14px", right: "14px", zIndex: 550,
+        width: "46px", height: "46px",
+        background: "rgba(255,255,255,0.22)",
+        backdropFilter: "blur(14px) saturate(1.6)",
+        border: "1px solid rgba(255,255,255,0.45)", borderRadius: "14px",
+        boxShadow: "0 4px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)",
+        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+        transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+        pointerEvents: "auto",
+      }}
+      onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1) rotate(22deg)"}
+      onMouseLeave={e => e.currentTarget.style.transform = "scale(1) rotate(0deg)"}
+    >
+      <img src={settingsCogImg} alt="settings" style={{ width: "26px", height: "26px", objectFit: "contain" }} />
+    </button>
+  );
 
   return (
     <div
@@ -772,25 +787,9 @@ function onTouchMove(e) {
         }
         .rg-hud-val.good { color: #5effa0; }
         .rg-hud-val.bad  { color: #ff6b6b; }
-
-        #rg-top-right {
-          position: fixed; top: 14px; right: 14px; z-index: 20;
-          display: flex; gap: 8px; pointer-events: auto;
-        }
-        .rg-top-btn {
-          padding: 8px 20px;
-          background: #e8e1cf; color: #3d2e1e;
-          border: none; border-radius: 18px;
-          font-family: 'Fredoka One', cursive; font-size: 15px;
-          cursor: pointer;
-          box-shadow: 0 4px 14px rgba(0,0,0,0.12);
-          transition: transform 0.12s ease;
-        }
-        .rg-top-btn:hover { transform: scale(1.05); }
       `}</style>
 
       <div id="rg-hud">
-        
         <div className="rg-hud-block">
           <span className="rg-hud-label">Score</span>
           <span className="rg-hud-val">{gameState?.score ?? 0}</span>
@@ -808,51 +807,32 @@ function onTouchMove(e) {
           <span className={`rg-hud-val${(gameState?.criticalMisses ?? 0) > 0 ? " bad" : ""}`}>{gameState?.criticalMisses ?? 0}</span>
         </div>
         <div className="rg-hud-block">
-  <span className="rg-hud-label">Lives</span>
-  <div style={{ display: "flex", alignItems: "center" }}>
-    {[0, 1, 2].map(i => (
-      <img key={i} src={livesImg} alt="" style={{
-        width: "28px", height: "28px", objectFit: "contain",
-        marginRight: i < 2 ? "-6px" : 0,
-        filter: i >= lives ? "grayscale(1) opacity(0.3)" : "none",
-        transition: "filter 0.3s",
-      }} />
-    ))}
-  </div>
-</div>
+          <span className="rg-hud-label">Lives</span>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            {[0, 1, 2].map(i => (
+              <img key={i} src={livesImg} alt="" style={{
+                width: "28px", height: "28px", objectFit: "contain",
+                marginRight: i < 2 ? "-6px" : 0,
+                filter: i >= lives ? "grayscale(1) opacity(0.3)" : "none",
+                transition: "filter 0.3s",
+              }} />
+            ))}
+          </div>
+        </div>
         <div className="rg-hud-block">
           <span className="rg-hud-label">Time</span>
           <span className="rg-hud-val">{elapsed}s</span>
         </div>
       </div>
 
-      {/*<div id="rg-top-right">
-        <button className="rg-top-btn" onClick={() => navigate("/level-selection")}>← Menu</button>
-        <button className="rg-top-btn" onClick={handleReset}>↺ Reset</button>
-      </div>*/}
-  <button onClick={() => setShowSettings(true)} title="Settings" style={{
-    position: "fixed", top: "14px", right: "14px", zIndex: 999,
-    width: "46px", height: "46px",
-    background: "rgba(255,255,255,0.22)",
-    backdropFilter: "blur(14px) saturate(1.6)",
-    border: "1px solid rgba(255,255,255,0.45)", borderRadius: "14px",
-    boxShadow: "0 4px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)",
-    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-    transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
-    pointerEvents: "auto",
-  }}
-    onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1) rotate(22deg)"}
-    onMouseLeave={e => e.currentTarget.style.transform = "scale(1) rotate(0deg)"}
-  >
-    <img src={settingsCogImg} alt="settings" style={{ width: "26px", height: "26px", objectFit: "contain" }} />
-  </button>
+      {/* ── Settings cog — always rendered, always on top ── */}
+      {SettingsCogButton}
 
-      {/* ── Feedback hint bar — bottom center, like FishPrepGame ── */}
+      {/* ── Feedback hint bar ── */}
       {gameStarted && feedback && (
         <div style={{
           position: "fixed", 
           top: "84px",
-          //bottom: "650px", 
           left: "50%", 
           transform: "translateX(-50%)",
           fontSize: "0.88rem", fontWeight: 700, letterSpacing: "0.5px", zIndex: 15,
@@ -881,60 +861,56 @@ function onTouchMove(e) {
         overflow: "hidden",
       }}>
 
-{/* ── Left: items panel ── */}
-<div style={{
-  width: "420px", flexShrink: 0,
-  background: "rgba(255,255,255,0.25)",
-  borderRadius: "14px",
-  border: "1px solid #5fb3de",
-  padding: "12px",  // ← smaller padding
-  display: "flex", flexDirection: "column",
-  overflow: "hidden",
-}}>
-          {/*<div style={{ fontSize: "13px", color: "#111111", marginBottom: "10px" }}>
-            Drag items into matching bins. Faster finish = more points!
-            &nbsp;+100 correct, -50 wrong, -150 critical. &nbsp;+10 bonus per streak.
-          </div>*/}
-<div style={{
-  display: "grid",
-  gridTemplateColumns: "repeat(3, 1fr)", // for how many colss we want for items
-  gap: "10px",
-  flex: 1,
-  alignContent: "start",
-  overflowY: "auto",
-}}>
-  {items.map((item) => {
-    const isDragging = draggingId === item.id;
-    return (
-      <div
-        key={item.id}
-        onMouseDown={(e) => onMouseDown(e, item)}
-        onTouchStart={(e) => onTouchStart(e, item)}
-        onMouseEnter={(e) => { if (!item.placed) e.currentTarget.style.transform = "scale(1.08)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-        style={{
-          height: `${item.h}px`,
-          borderRadius: "10px",
-          background: item.placed ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.15)",
-          border: "2px solid rgba(255,255,255,0.3)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: item.placed ? "default" : "grab",
-          opacity: item.placed ? 0.25 : isDragging ? 0.5 : 1,
-          pointerEvents: item.placed ? "none" : "auto",
-          boxShadow: "0 3px 8px rgba(0,0,0,0.25)",
-          padding: "4px",
-        }}
-      ><img
-  src={item.img}
-  alt={item.name}
-  draggable={false}
-  style={{ width: "auto", maxWidth: "100%", height: "100%", objectFit: "contain" }}
-/>
-        
-      </div>
-    );
-  })}
-</div>
+        {/* ── Left: items panel ── */}
+        <div style={{
+          width: "420px", flexShrink: 0,
+          background: "rgba(255,255,255,0.25)",
+          borderRadius: "14px",
+          border: "1px solid #5fb3de",
+          padding: "12px",
+          display: "flex", flexDirection: "column",
+          overflow: "hidden",
+        }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "10px",
+            flex: 1,
+            alignContent: "start",
+            overflowY: "auto",
+          }}>
+            {items.map((item) => {
+              const isDragging = draggingId === item.id;
+              return (
+                <div
+                  key={item.id}
+                  onMouseDown={(e) => onMouseDown(e, item)}
+                  onTouchStart={(e) => onTouchStart(e, item)}
+                  onMouseEnter={(e) => { if (!item.placed) e.currentTarget.style.transform = "scale(1.08)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+                  style={{
+                    height: `${item.h}px`,
+                    borderRadius: "10px",
+                    background: item.placed ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.15)",
+                    border: "2px solid rgba(255,255,255,0.3)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: item.placed ? "default" : "grab",
+                    opacity: item.placed ? 0.25 : isDragging ? 0.5 : 1,
+                    pointerEvents: item.placed ? "none" : "auto",
+                    boxShadow: "0 3px 8px rgba(0,0,0,0.25)",
+                    padding: "4px",
+                  }}
+                >
+                  <img
+                    src={item.img}
+                    alt={item.name}
+                    draggable={false}
+                    style={{ width: "auto", maxWidth: "100%", height: "100%", objectFit: "contain" }}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* ── Right: 2x2 bins ── */}
@@ -946,47 +922,48 @@ function onTouchMove(e) {
           gap: "2px",
           overflow: "visible", 
         }}>
-{["COMPOST", "RECYCLE", "LANDFILL", "SPECIAL"].map((cat) => {
-  const placedCount = items.filter(it => it.placed && it.category === cat).length;
-  return (
-    <div
-      key={cat}
-      data-bin={cat}
-      style={{
-        borderRadius: "14px",
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "flex-end",
-        position: "relative",
-        overflow: "hidden",
-        cursor: "default",
-      }}
-    ><img
-  src={BIN_IMAGES[cat]}
-  alt={cat}
-  draggable={false}
-  style={{
-    width: "150%",
-    height: "140%",
-    maxHeight: "160%",
-    objectFit: "contain",
-    objectPosition: "center",
-    pointerEvents: "none",
-  }}
-/>
-      {placedCount > 0 && (
-        <div style={{
-          position: "absolute", bottom: "8px",
-          background: "rgba(0,0,0,0.55)",
-          color: "white", borderRadius: "20px",
-          padding: "3px 12px", fontSize: "13px",
-          fontFamily: "'Fredoka One', cursive",
-        }}>
-          {placedCount} sorted
-        </div>
-      )}
-    </div>
-  );
-})}
+          {["COMPOST", "RECYCLE", "LANDFILL", "SPECIAL"].map((cat) => {
+            const placedCount = items.filter(it => it.placed && it.category === cat).length;
+            return (
+              <div
+                key={cat}
+                data-bin={cat}
+                style={{
+                  borderRadius: "14px",
+                  display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "flex-end",
+                  position: "relative",
+                  overflow: "hidden",
+                  cursor: "default",
+                }}
+              >
+                <img
+                  src={BIN_IMAGES[cat]}
+                  alt={cat}
+                  draggable={false}
+                  style={{
+                    width: "150%",
+                    height: "140%",
+                    maxHeight: "160%",
+                    objectFit: "contain",
+                    objectPosition: "center",
+                    pointerEvents: "none",
+                  }}
+                />
+                {placedCount > 0 && (
+                  <div style={{
+                    position: "absolute", bottom: "8px",
+                    background: "rgba(0,0,0,0.55)",
+                    color: "white", borderRadius: "20px",
+                    padding: "3px 12px", fontSize: "13px",
+                    fontFamily: "'Fredoka One', cursive",
+                  }}>
+                    {placedCount} sorted
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -1050,12 +1027,13 @@ function onTouchMove(e) {
           <button
             onClick={() => setGameStarted(true)}
             style={{
-              position: "absolute", top: "3%", right: "3%",
+              position: "absolute", top: "3%", right: "80px", // leave room for cog
               padding: "14px 38px", fontSize: "20px", borderRadius: "18px",
               border: "none", backgroundColor: "#e8e1cf", color: "#3d2e1e",
               cursor: "pointer", fontFamily: "'Fredoka One', cursive",
               boxShadow: "0 8px 15px rgba(0,0,0,0.15)",
               transition: "transform 0.1s ease",
+              zIndex: 320,
             }}
             onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
             onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
@@ -1073,6 +1051,7 @@ function onTouchMove(e) {
               cursor: "pointer", fontFamily: "'Fredoka One', cursive",
               boxShadow: "0 8px 15px rgba(0,0,0,0.15)",
               transition: "transform 0.1s ease",
+              zIndex: 320,
             }}
             onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
             onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
@@ -1080,7 +1059,7 @@ function onTouchMove(e) {
             ← Level Menu
           </button>
 
-          {/* Waving bear — bottom left, same as FishPrepGame */}
+          {/* Waving bear */}
           <img
             src={wavingBearImg}
             alt="waving bear"
@@ -1093,7 +1072,7 @@ function onTouchMove(e) {
             }}
           />
 
-          {/* Dialogue box — bottom center, clicking advances */}
+          {/* Dialogue box */}
           <div
             onClick={handleDialogueClick}
             style={{
@@ -1103,7 +1082,6 @@ function onTouchMove(e) {
               cursor: "pointer", zIndex: 2,
             }}
           >
-            {/* Speaker tab */}
             <div style={{
               display: "inline-block",
               background: "#f5eedc",
@@ -1119,7 +1097,6 @@ function onTouchMove(e) {
               {DIALOGUE[dialogueIndex].speaker}
             </div>
 
-            {/* Dialogue content */}
             <div style={{
               background: "#fdf6e3",
               border: "3px solid #c8b89a",
@@ -1159,122 +1136,123 @@ function onTouchMove(e) {
       )}
 
       {/* ── Results screen ── */}
-{showResults && (
-  <div style={{
-    position: "fixed", inset: 0, zIndex: 400,
-    display: "flex", alignItems: "center", justifyContent: "center",
-  }}>
-    <div style={{
-      width: "65vw", maxWidth: "860px",
-      background: "rgba(255,255,255,0.82)",
-      borderRadius: "35px", padding: "50px",
-      backdropFilter: "blur(18px)",
-      boxShadow: "0 25px 50px rgba(0,0,0,0.18)",
-      fontFamily: "'Fredoka One', cursive",
-      textAlign: "center",
-    }}>
-      <h1 style={{ fontSize: "clamp(28px,5vw,52px)", margin: "0 0 8px", color: "#2c2316" }}>
-        {lives <= 0 ? "Out of Lives!" : "Sorting Complete!"}
-      </h1>
-
-      <div style={{
-        fontSize: "14px", letterSpacing: "2px", opacity: 0.6,
-        textTransform: "uppercase", marginBottom: "4px", color: "#5a4a35",
-      }}>
-        Rating
-      </div>
-
-      <div style={{ display: "flex", gap: "8px", justifyContent: "center", margin: "18px 0" }}>
-        {[0, 1, 2].map((i) => (
-          <div key={i} className={`honey${honeyEarned[i] ? " earned" : ""}${honeyPop[i] ? " pop" : ""}`}>
-            <img src={honeyEarned[i] ? filledHoneyImg : blankHoneyImg} alt="" />
-          </div>
-        ))}
-      </div>
-
-      <div style={{
-        display: "flex", justifyContent: "center",
-        gap: "32px", margin: "18px 0 32px", flexWrap: "wrap",
-      }}>
+      {showResults && (
         <div style={{
-          background: "#e8e1cf", borderRadius: "22px",
-          padding: "18px 32px", boxShadow: "0 8px 15px rgba(0,0,0,0.1)",
+          position: "fixed", inset: 0, zIndex: 400,
+          display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-          <div style={{ fontSize: "14px", letterSpacing: "2px", opacity: 0.6, color: "#5a4a35" }}>SCORE</div>
-          <div style={{ fontSize: "clamp(28px,4vw,42px)", color: "#5a4a35" }}>
-            {gameState?.score ?? 0}
+          <div style={{
+            width: "65vw", maxWidth: "860px",
+            background: "rgba(255,255,255,0.82)",
+            borderRadius: "35px", padding: "50px",
+            backdropFilter: "blur(18px)",
+            boxShadow: "0 25px 50px rgba(0,0,0,0.18)",
+            fontFamily: "'Fredoka One', cursive",
+            textAlign: "center",
+          }}>
+            <h1 style={{ fontSize: "clamp(28px,5vw,52px)", margin: "0 0 8px", color: "#2c2316" }}>
+              {lives <= 0 ? "Out of Lives!" : "Sorting Complete!"}
+            </h1>
+
+            <div style={{
+              fontSize: "14px", letterSpacing: "2px", opacity: 0.6,
+              textTransform: "uppercase", marginBottom: "4px", color: "#5a4a35",
+            }}>
+              Rating
+            </div>
+
+            <div style={{ display: "flex", gap: "8px", justifyContent: "center", margin: "18px 0" }}>
+              {[0, 1, 2].map((i) => (
+                <div key={i} className={`honey${honeyEarned[i] ? " earned" : ""}${honeyPop[i] ? " pop" : ""}`}>
+                  <img src={honeyEarned[i] ? filledHoneyImg : blankHoneyImg} alt="" />
+                </div>
+              ))}
+            </div>
+
+            <div style={{
+              display: "flex", justifyContent: "center",
+              gap: "32px", margin: "18px 0 32px", flexWrap: "wrap",
+            }}>
+              <div style={{
+                background: "#e8e1cf", borderRadius: "22px",
+                padding: "18px 32px", boxShadow: "0 8px 15px rgba(0,0,0,0.1)",
+              }}>
+                <div style={{ fontSize: "14px", letterSpacing: "2px", opacity: 0.6, color: "#5a4a35" }}>SCORE</div>
+                <div style={{ fontSize: "clamp(28px,4vw,42px)", color: "#5a4a35" }}>
+                  {gameState?.score ?? 0}
+                </div>
+              </div>
+              <div style={{
+                background: "#e8e1cf", borderRadius: "22px",
+                padding: "18px 32px", boxShadow: "0 8px 15px rgba(0,0,0,0.1)",
+              }}>
+                <div style={{ fontSize: "14px", letterSpacing: "2px", opacity: 0.6, color: "#5a4a35" }}>TIME</div>
+                <div style={{ fontSize: "clamp(28px,4vw,42px)", color: "#5a4a35" }}>
+                  {elapsed}s
+                </div>
+              </div>
+              <div style={{
+                background: "#e8e1cf", borderRadius: "22px",
+                padding: "18px 32px", boxShadow: "0 8px 15px rgba(0,0,0,0.1)",
+              }}>
+                <div style={{ fontSize: "14px", letterSpacing: "2px", opacity: 0.6, color: "#5a4a35" }}>SORTED</div>
+                <div style={{ fontSize: "clamp(28px,4vw,42px)", color: "#5a4a35" }}>
+                  {gameState?.placedCount ?? 0}/{gameState?.totalItems ?? 16}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "center", gap: "16px", flexWrap: "wrap" }}>
+              <button
+                onClick={() => navigate("/level-selection")}
+                onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                style={{
+                  padding: "14px 38px", fontSize: "20px", borderRadius: "18px",
+                  border: "none", backgroundColor: "#e8e1cf", color: "#3d2e1e",
+                  cursor: "pointer", boxShadow: "0 8px 15px rgba(0,0,0,0.15)",
+                  fontFamily: "'Fredoka One', cursive", transition: "transform 0.1s ease",
+                }}
+              >
+                ← Level Menu
+              </button>
+              <button
+                onClick={handleReset}
+                onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                style={{
+                  padding: "14px 38px", fontSize: "20px", borderRadius: "18px",
+                  border: "none", backgroundColor: "#7FBF3F", color: "white",
+                  cursor: "pointer", boxShadow: "0 8px 15px rgba(0,0,0,0.15)",
+                  fontFamily: "'Fredoka One', cursive", transition: "transform 0.1s ease",
+                }}
+              >
+                Play Again ↺
+              </button>
+            </div>
           </div>
         </div>
-        <div style={{
-          background: "#e8e1cf", borderRadius: "22px",
-          padding: "18px 32px", boxShadow: "0 8px 15px rgba(0,0,0,0.1)",
-        }}>
-          <div style={{ fontSize: "14px", letterSpacing: "2px", opacity: 0.6, color: "#5a4a35" }}>TIME</div>
-          <div style={{ fontSize: "clamp(28px,4vw,42px)", color: "#5a4a35" }}>
-            {elapsed}s
-          </div>
+      )}
+
+      {/* ── Settings panel — zIndex 550, always above intro (300), results (400), loading (500) ── */}
+      {showSettings && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 550, color: "#000" }}>
+          <Settings
+            onClose={() => setShowSettings(false)}
+            extraButtons={
+              <button onClick={() => setShowQuitConfirm(true)} style={{
+                padding: "14px 38px", fontSize: "20px", borderRadius: "18px",
+                border: "none", backgroundColor: "#7FBF3F", color: "white",
+                cursor: "pointer", fontFamily: "'Fredoka One', cursive",
+              }}>
+                Main Menu
+              </button>
+            }
+          />
         </div>
-        <div style={{
-          background: "#e8e1cf", borderRadius: "22px",
-          padding: "18px 32px", boxShadow: "0 8px 15px rgba(0,0,0,0.1)",
-        }}>
-          <div style={{ fontSize: "14px", letterSpacing: "2px", opacity: 0.6, color: "#5a4a35" }}>SORTED</div>
-          <div style={{ fontSize: "clamp(28px,4vw,42px)", color: "#5a4a35" }}>
-            {gameState?.placedCount ?? 0}/{gameState?.totalItems ?? 16}
-          </div>
-        </div>
-      </div>
+      )}
 
-      <div style={{ display: "flex", justifyContent: "center", gap: "16px", flexWrap: "wrap" }}>
-        <button
-          onClick={() => navigate("/level-selection")}
-          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
-          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-          style={{
-            padding: "14px 38px", fontSize: "20px", borderRadius: "18px",
-            border: "none", backgroundColor: "#e8e1cf", color: "#3d2e1e",
-            cursor: "pointer", boxShadow: "0 8px 15px rgba(0,0,0,0.15)",
-            fontFamily: "'Fredoka One', cursive", transition: "transform 0.1s ease",
-          }}
-        >
-          ← Level Menu
-        </button>
-        <button
-          onClick={handleReset}
-          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
-          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-          style={{
-            padding: "14px 38px", fontSize: "20px", borderRadius: "18px",
-            border: "none", backgroundColor: "#7FBF3F", color: "white",
-            cursor: "pointer", boxShadow: "0 8px 15px rgba(0,0,0,0.15)",
-            fontFamily: "'Fredoka One', cursive", transition: "transform 0.1s ease",
-          }}
-        >
-          Play Again ↺
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
-            {showSettings && (
-    <div style={{ position: "fixed", inset: 0, zIndex: 60, color: "#000"}}>
-    <Settings
-      onClose={() => setShowSettings(false)}
-      extraButtons={
-        <button onClick={() => setShowQuitConfirm(true)} style={{
-          padding: "14px 38px", fontSize: "20px", borderRadius: "18px",
-          border: "none", backgroundColor: "#7FBF3F", color: "white",
-          cursor: "pointer", fontFamily: "'Fredoka One', cursive",
-        }}>
-          Main Menu
-        </button>
-      }
-    />
-  </div>
-)}
-
+      {/* ── Quit confirm — zIndex 600, above everything ── */}
       {showQuitConfirm && (
         <QuitConfirmModal
           onConfirm={() => {
@@ -1286,26 +1264,24 @@ function onTouchMove(e) {
         />
       )}
 
-{/* ── Bottom hint pill ── */}
-<div style={{
-  position: "fixed", bottom: "18px", left: "50%", transform: "translateX(-50%)",
-  background: "rgba(255,255,255,0.22)",
-  backdropFilter: "blur(14px) saturate(1.6)",
-  WebkitBackdropFilter: "blur(14px) saturate(1.6)",
-  border: "1px solid rgba(255,255,255,0.45)",
-  borderRadius: "50px",
-  padding: "8px 24px",
-  boxShadow: "0 4px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)",
-  fontSize: "0.75rem", fontWeight: 800, letterSpacing: "1px",
-  color: "rgba(255,255,255,0.9)",
-  textShadow: "0 1px 3px rgba(0,0,0,0.35)",
-  pointerEvents: "none", zIndex: 15,
-  whiteSpace: "nowrap",
-}}>
-  Drag items into the correct bin • Special waste costs -150 points!
-</div>
-
-
+      {/* ── Bottom hint pill ── */}
+      <div style={{
+        position: "fixed", bottom: "18px", left: "50%", transform: "translateX(-50%)",
+        background: "rgba(255,255,255,0.22)",
+        backdropFilter: "blur(14px) saturate(1.6)",
+        WebkitBackdropFilter: "blur(14px) saturate(1.6)",
+        border: "1px solid rgba(255,255,255,0.45)",
+        borderRadius: "50px",
+        padding: "8px 24px",
+        boxShadow: "0 4px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)",
+        fontSize: "0.75rem", fontWeight: 800, letterSpacing: "1px",
+        color: "rgba(255,255,255,0.9)",
+        textShadow: "0 1px 3px rgba(0,0,0,0.35)",
+        pointerEvents: "none", zIndex: 15,
+        whiteSpace: "nowrap",
+      }}>
+        Drag items into the correct bin • Special waste costs -150 points!
+      </div>
     </div>
   );
 }

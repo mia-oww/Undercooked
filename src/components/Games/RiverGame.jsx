@@ -236,7 +236,7 @@ const STYLES = `
   }
 
   #rr-settings-btn {
-    position:fixed; top:14px; right:14px; z-index:30;
+    position:fixed; top:14px; right:14px; z-index:100;
     width:46px; height:46px;
     background:rgba(255,255,255,0.22);
     backdrop-filter:blur(14px) saturate(1.6);
@@ -309,7 +309,7 @@ const STYLES = `
     border:1px solid rgba(255,255,255,0.15);
   }
 
-  /* ── Honey jars (matches FishPrepGame) ───────────────────────────────── */
+  /* ── Honey jars ───────────────────────────────── */
   .honey {
     width: clamp(64px, 9vw, 110px);
     height: clamp(64px, 9vw, 110px);
@@ -345,7 +345,7 @@ function QuitConfirmModal({ onConfirm, onCancel }) {
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 80,
+        zIndex: 200, // above everything including settings (150)
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -731,10 +731,8 @@ export default function RiverGame() {
 
       const earnedStars = calculateEarnedStars(s.score, s.fishCount);
 
-      // always save locally first, so guest mode still works
       saveLevelResult(currentLevelId, earnedStars);
 
-      // if logged in, also save to Supabase
       try {
         const {
           data: { session },
@@ -897,27 +895,22 @@ export default function RiverGame() {
           } else {
             stateRef.current.fishCount++;
             stateRef.current.trashCombo = 0;
-            if(type === 'salmonImg') {
+            if (type === 'salmonImg') {
               stateRef.current.score += 10;
               updateScore(10);
-            }
-            else if(type === 'mackerelImg') {
+            } else if (type === 'mackerelImg') {
               stateRef.current.score += 20;
               updateScore(20);
-            }
-            else if(type === 'red_snapperImg') {
+            } else if (type === 'red_snapperImg') {
               stateRef.current.score += 30;
               updateScore(30);
-            }
-            else if(type === 'yellowfinImg') {
+            } else if (type === 'yellowfinImg') {
               stateRef.current.score += 40;
               updateScore(40);
-            }
-            else if(type === 'tunaImg') {
+            } else if (type === 'tunaImg') {
               stateRef.current.score += 50;
               updateScore(50);
-            }
-            else {
+            } else {
               stateRef.current.score += 100;
               updateScore(100);
             }
@@ -981,21 +974,10 @@ export default function RiverGame() {
     s.spawnInterval = setInterval(spawnItem, s.spawnDelay);
   }, [spawnItem]);
 
-  useEffect(() => {
-    spawnItemRef.current = spawnItem;
-  }, [spawnItem]);
-
-  useEffect(() => {
-    rampUpRef.current = rampUp;
-  }, [rampUp]);
-
-  useEffect(() => {
-    updateTimerRef.current = updateTimer;
-  }, [updateTimer]);
-
-  useEffect(() => {
-    endGameRef.current = endGame;
-  }, [endGame]);
+  useEffect(() => { spawnItemRef.current = spawnItem; }, [spawnItem]);
+  useEffect(() => { rampUpRef.current = rampUp; }, [rampUp]);
+  useEffect(() => { updateTimerRef.current = updateTimer; }, [updateTimer]);
+  useEffect(() => { endGameRef.current = endGame; }, [endGame]);
 
   const pauseGame = useCallback(() => {
     const s = stateRef.current;
@@ -1097,6 +1079,7 @@ export default function RiverGame() {
     }
   }, [levelId, startGame]);
 
+  // ── FIX: was [], now [currentLevelId, startGame] so it actually runs after startGame is stable ──
   useEffect(() => {
     async function checkSkipIntro() {
       try {
@@ -1125,7 +1108,7 @@ export default function RiverGame() {
     }
 
     checkSkipIntro();
-  }, [currentLevelId, startGame]);
+  }, [currentLevelId, startGame]); // ← was []
 
   useEffect(() => {
     const styleEl = document.createElement("style");
@@ -1242,29 +1225,21 @@ export default function RiverGame() {
       <div id="rr-hud" style={{ display: gameStarted ? "flex" : "none" }}>
         <div className="rr-hud-block">
           <span className="rr-hud-label">Score</span>
-          <span className="rr-hud-val" id="rr-score-display" ref={scoreDisplayRef}>
-            0
-          </span>
+          <span className="rr-hud-val" id="rr-score-display" ref={scoreDisplayRef}>0</span>
         </div>
         <div className="rr-hud-block">
           <span className="rr-hud-label">Trash Streak</span>
-          <span id="rr-combo-display" ref={comboDisplayRef}>
-            —
-          </span>
+          <span id="rr-combo-display" ref={comboDisplayRef}>—</span>
         </div>
         <button id="rr-toggle-btn" ref={toggleBtnRef} className="rr-trash-mode" onClick={toggleMode}>
           <img className="rr-mode-icon" ref={modeIconRef} src={A.trashcan} alt="mode" />
           <span ref={modeLabelRef}>Trash Can</span>
           <span style={{ opacity: 0.45 }}>⇄</span>
         </button>
-        <span id="rr-hard-badge" ref={hardBadgeRef}>
-          HARD
-        </span>
+        <span id="rr-hard-badge" ref={hardBadgeRef}>HARD</span>
         <div className="rr-hud-block">
           <span className="rr-hud-label">Saved</span>
-          <span id="rr-fish-val" ref={fishValRef}>
-            0
-          </span>
+          <span id="rr-fish-val" ref={fishValRef}>0</span>
         </div>
         <div className="rr-hud-block rr-lives-block">
           <span className="rr-hud-label">Lives</span>
@@ -1272,24 +1247,22 @@ export default function RiverGame() {
         </div>
         <div className="rr-hud-block">
           <span className="rr-hud-label">Time</span>
-          <span className="rr-hud-val" id="rr-timer-display" ref={timerDisplayRef}>
-            1:00
-          </span>
+          <span className="rr-hud-val" id="rr-timer-display" ref={timerDisplayRef}>1:00</span>
         </div>
       </div>
 
-      {gameStarted && (
-        <button id="rr-settings-btn" title="Settings" onClick={openSettings}>
-          <img
-            src={settingsCogImg}
-            alt="settings"
-            style={{ width: "26px", height: "26px", objectFit: "contain" }}
-          />
-        </button>
-      )}
+      {/* ── Settings cog — always visible, zIndex 100 (above HUD at 20, below overlays) ── */}
+      <button id="rr-settings-btn" title="Settings" onClick={openSettings}>
+        <img
+          src={settingsCogImg}
+          alt="settings"
+          style={{ width: "26px", height: "26px", objectFit: "contain" }}
+        />
+      </button>
 
+      {/* ── Settings panel — zIndex 150, above intro/end (50) ── */}
       {showSettings && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 60 }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 150 }}>
           <Settings
             onClose={closeSettings}
             extraButtons={
@@ -1317,6 +1290,7 @@ export default function RiverGame() {
         </div>
       )}
 
+      {/* ── Quit confirm — zIndex 200, above everything ── */}
       {showQuitConfirm && (
         <QuitConfirmModal
           onConfirm={() => navigate("/")}
@@ -1326,24 +1300,19 @@ export default function RiverGame() {
 
       {gameStarted && <div id="rr-hint">Move mouse · SPACE or click button to switch modes</div>}
 
+      {/* ── End screen — zIndex 50 ── */}
       {endScreen && (
         <div
           style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 50,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            position: "fixed", inset: 0, zIndex: 50,
+            display: "flex", alignItems: "center", justifyContent: "center",
           }}
         >
           <div
             style={{
-              width: "65vw",
-              maxWidth: "860px",
+              width: "65vw", maxWidth: "860px",
               background: "rgba(255,255,255,0.82)",
-              borderRadius: "35px",
-              padding: "50px",
+              borderRadius: "35px", padding: "50px",
               backdropFilter: "blur(18px)",
               boxShadow: "0 25px 50px rgba(0,0,0,0.18)",
               fontFamily: "'Fredoka One', cursive",
@@ -1361,7 +1330,6 @@ export default function RiverGame() {
               <div style={{ color: "#e74c3c", fontSize: "18px", marginBottom: "12px" }}>Hard Mode</div>
             )}
 
-            {/* Honey jar rating — matches FishPrepGame */}
             <div style={{
               fontSize: "14px", letterSpacing: "2px", opacity: 0.6,
               textTransform: "uppercase", marginBottom: "4px", color: "#5a4a35",
@@ -1376,54 +1344,16 @@ export default function RiverGame() {
               ))}
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                gap: "32px",
-                margin: "18px 0 32px",
-                flexWrap: "wrap",
-              }}
-            >
-              <div
-                style={{
-                  background: "#e8e1cf",
-                  borderRadius: "22px",
-                  padding: "18px 32px",
-                  boxShadow: "0 8px 15px rgba(0,0,0,0.1)",
-                }}
-              >
+            <div style={{ display: "flex", justifyContent: "center", gap: "32px", margin: "18px 0 32px", flexWrap: "wrap" }}>
+              <div style={{ background: "#e8e1cf", borderRadius: "22px", padding: "18px 32px", boxShadow: "0 8px 15px rgba(0,0,0,0.1)" }}>
                 <div style={{ fontSize: "14px", letterSpacing: "2px", opacity: 0.6 }}>SCORE</div>
-                <div style={{ fontSize: "clamp(28px,4vw,42px)", color: "#5a4a35" }}>
-                  {endScreen.score}
-                </div>
+                <div style={{ fontSize: "clamp(28px,4vw,42px)", color: "#5a4a35" }}>{endScreen.score}</div>
               </div>
-
-              <div
-                style={{
-                  background: "#e8e1cf",
-                  borderRadius: "22px",
-                  padding: "18px 32px",
-                  boxShadow: "0 8px 15px rgba(0,0,0,0.1)",
-                }}
-              >
+              <div style={{ background: "#e8e1cf", borderRadius: "22px", padding: "18px 32px", boxShadow: "0 8px 15px rgba(0,0,0,0.1)" }}>
                 <div style={{ fontSize: "14px", letterSpacing: "2px", opacity: 0.6 }}>SALMON SAVED</div>
-                <div
-                  style={{
-                    fontSize: "clamp(28px,4vw,42px)",
-                    color: "#4fc3e8",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    justifyContent: "center",
-                  }}
-                >
+                <div style={{ fontSize: "clamp(28px,4vw,42px)", color: "#4fc3e8", display: "flex", alignItems: "center", gap: "8px", justifyContent: "center" }}>
                   {endScreen.fishCount}
-                  <img
-                    src={A.salmon}
-                    style={{ width: "36px", height: "36px", objectFit: "contain" }}
-                    alt="salmon"
-                  />
+                  <img src={A.salmon} style={{ width: "36px", height: "36px", objectFit: "contain" }} alt="salmon" />
                 </div>
               </div>
             </div>
@@ -1437,19 +1367,10 @@ export default function RiverGame() {
               >
                 ← Level Menu
               </button>
-
               <button
-                onClick={() => {
-                  if (endScreen.hasNextLevel) {
-                    navigate(`/level/${endScreen.nextLevelId}`);
-                  }
-                }}
-                onMouseEnter={(e) => {
-                  if (endScreen.hasNextLevel) e.currentTarget.style.transform = "scale(1.05)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "scale(1)";
-                }}
+                onClick={() => { if (endScreen.hasNextLevel) navigate(`/level/${endScreen.nextLevelId}`); }}
+                onMouseEnter={(e) => { if (endScreen.hasNextLevel) e.currentTarget.style.transform = "scale(1.05)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
                 style={{
                   ...btnStyle,
                   backgroundColor: endScreen.hasNextLevel ? "#7FBF3F" : "#cccccc",
@@ -1465,13 +1386,11 @@ export default function RiverGame() {
         </div>
       )}
 
+      {/* ── Intro dialogue — zIndex 50 ── */}
       {introReady && !gameStarted && !endScreen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50 }}>
           <button
-            onClick={() => {
-              setDialogueIndex(0);
-              startGame();
-            }}
+            onClick={() => { setDialogueIndex(0); startGame(); }}
             onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
             onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
             style={{ ...btnStyle, position: "absolute", top: "3%", right: "3%" }}
@@ -1494,9 +1413,7 @@ export default function RiverGame() {
             onClick={handleHardRowClick}
             style={{ position: "absolute", top: "3%", left: "50%", transform: "translateX(-50%)" }}
           >
-            <div id="rr-hard-switch">
-              <div id="rr-hard-knob" />
-            </div>
+            <div id="rr-hard-switch"><div id="rr-hard-knob" /></div>
             <span id="rr-hard-text">Hard Mode</span>
           </div>
 
@@ -1504,13 +1421,9 @@ export default function RiverGame() {
             src={wavingBearImg}
             alt="waving bear"
             style={{
-              position: "absolute",
-              bottom: 0,
-              left: "2%",
-              height: "55vh",
-              maxHeight: "420px",
-              objectFit: "contain",
-              zIndex: 1,
+              position: "absolute", bottom: 0, left: "2%",
+              height: "55vh", maxHeight: "420px",
+              objectFit: "contain", zIndex: 1,
               filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.2))",
               pointerEvents: "none",
             }}
@@ -1519,57 +1432,35 @@ export default function RiverGame() {
           <div
             onClick={handleDialogueNext}
             style={{
-              position: "absolute",
-              bottom: "4%",
-              left: "50%",
+              position: "absolute", bottom: "4%", left: "50%",
               transform: "translateX(-50%)",
-              width: "72vw",
-              maxWidth: "860px",
-              cursor: "pointer",
-              zIndex: 2,
+              width: "72vw", maxWidth: "860px",
+              cursor: "pointer", zIndex: 2,
             }}
           >
-            <div
-              style={{
-                display: "inline-block",
-                background: "#f5eedc",
-                border: "3px solid #c8b89a",
-                borderBottom: "none",
-                borderRadius: "14px 14px 0 0",
-                padding: "6px 22px",
-                fontFamily: "'Fredoka One', cursive",
-                fontSize: "18px",
-                color: "#5a4a35",
-                marginLeft: "24px",
-                boxShadow: "0 -2px 8px rgba(0,0,0,0.06)",
-              }}
-            >
+            <div style={{
+              display: "inline-block",
+              background: "#f5eedc", border: "3px solid #c8b89a",
+              borderBottom: "none", borderRadius: "14px 14px 0 0",
+              padding: "6px 22px", fontFamily: "'Fredoka One', cursive",
+              fontSize: "18px", color: "#5a4a35", marginLeft: "24px",
+              boxShadow: "0 -2px 8px rgba(0,0,0,0.06)",
+            }}>
               {currentLine.speaker}
             </div>
 
-            <div
-              style={{
-                background: "#fdf6e3",
-                border: "3px solid #c8b89a",
-                borderRadius: "0 18px 18px 18px",
-                padding: "24px 32px",
-                boxShadow: "0 8px 30px rgba(0,0,0,0.18)",
-                textAlign: "left",
-              }}
-            >
-              <p
-                style={{
-                  fontFamily: "'Fredoka One', cursive",
-                  fontSize: "clamp(16px, 1.8vw, 22px)",
-                  color: "#3d2e1e",
-                  margin: 0,
-                  lineHeight: 1.6,
-                  minHeight: "60px",
-                  textAlign: "left",
-                  whiteSpace: "normal",
-                  wordBreak: "normal",
-                }}
-              >
+            <div style={{
+              background: "#fdf6e3", border: "3px solid #c8b89a",
+              borderRadius: "0 18px 18px 18px", padding: "24px 32px",
+              boxShadow: "0 8px 30px rgba(0,0,0,0.18)", textAlign: "left",
+            }}>
+              <p style={{
+                fontFamily: "'Fredoka One', cursive",
+                fontSize: "clamp(16px, 1.8vw, 22px)",
+                color: "#3d2e1e", margin: 0, lineHeight: 1.6,
+                minHeight: "60px", textAlign: "left",
+                whiteSpace: "normal", wordBreak: "normal",
+              }}>
                 {currentLine.text}
               </p>
 
@@ -1577,50 +1468,33 @@ export default function RiverGame() {
                 <button
                   onClick={handleDialogueBack}
                   disabled={dialogueIndex === 0}
-                  onMouseEnter={(e) => {
-                    if (dialogueIndex > 0) e.currentTarget.style.transform = "scale(1.1)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "scale(1)";
-                  }}
+                  onMouseEnter={(e) => { if (dialogueIndex > 0) e.currentTarget.style.transform = "scale(1.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
                   style={{
-                    background: "transparent",
-                    border: "none",
-                    padding: "4px 12px",
-                    fontFamily: "'Fredoka One', cursive",
+                    background: "transparent", border: "none",
+                    padding: "4px 12px", fontFamily: "'Fredoka One', cursive",
                     fontSize: "16px",
                     color: dialogueIndex === 0 ? "#c8b89a" : "#a08c72",
                     cursor: dialogueIndex === 0 ? "not-allowed" : "pointer",
-                    transition: "transform 0.1s ease",
-                    flexShrink: 0,
+                    transition: "transform 0.1s ease", flexShrink: 0,
                   }}
                 >
                   ◀
                 </button>
 
                 {INTRO_DIALOGUE.map((_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: i === dialogueIndex ? "20px" : "8px",
-                      height: "8px",
-                      borderRadius: "999px",
-                      background: i === dialogueIndex ? "#c8b89a" : "#e0d5c0",
-                      transition: "width 0.2s ease",
-                      flexShrink: 0,
-                    }}
-                  />
+                  <div key={i} style={{
+                    width: i === dialogueIndex ? "20px" : "8px",
+                    height: "8px", borderRadius: "999px",
+                    background: i === dialogueIndex ? "#c8b89a" : "#e0d5c0",
+                    transition: "width 0.2s ease", flexShrink: 0,
+                  }} />
                 ))}
 
-                <span
-                  style={{
-                    marginLeft: "auto",
-                    fontFamily: "'Fredoka One', cursive",
-                    fontSize: "14px",
-                    color: "#a08c72",
-                    flexShrink: 0,
-                  }}
-                >
+                <span style={{
+                  marginLeft: "auto", fontFamily: "'Fredoka One', cursive",
+                  fontSize: "14px", color: "#a08c72", flexShrink: 0,
+                }}>
                   {isLastDialogue ? "Let's go! ▶" : "Click to continue ▶"}
                 </span>
               </div>
