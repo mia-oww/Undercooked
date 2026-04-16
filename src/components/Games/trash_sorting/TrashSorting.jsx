@@ -20,7 +20,7 @@ import plasticBottle from "../../../assets/sprites/trash-sorting/plastic_bottle.
 import homescreenImg from "../../../assets/story_pngs/story1.3.png";
 // BINS
 import compostBinImg from "../../../assets/sprites/trash-sorting/compostbin.png";
-import recycleBinImg from "../../../assets/sprites/trash-sorting/recyclebin.PNG";
+import recycleBinImg from "../../../assets/sprites/trash-sorting/recyclebin.png";
 import landfillBinImg from "../../../assets/sprites/trash-sorting/landfillbin.png";
 import specialBinImg from "../../../assets/sprites/trash-sorting/specialbin.png";
 // COMPOST 
