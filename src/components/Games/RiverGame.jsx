@@ -395,7 +395,7 @@ function QuitConfirmModal({ onConfirm, onCancel }) {
             onClick={onConfirm}
             onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
             onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-            style={{ ...btnBase, backgroundColor: "#e74c3c", color: "white" }}
+            style={{ ...btnBase, backgroundColor: "#7FBF3F", color: "white" }}
           >
             Leave
           </button>
@@ -1271,7 +1271,7 @@ export default function RiverGame() {
                   fontSize: "20px",
                   borderRadius: "18px",
                   border: "none",
-                  backgroundColor: "#c0392b",
+                  backgroundColor: "#7FBF3F",
                   color: "white",
                   cursor: "pointer",
                   boxShadow: "0 8px 15px rgba(0,0,0,0.15)",
