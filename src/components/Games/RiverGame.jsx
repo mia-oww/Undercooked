@@ -14,6 +14,10 @@ import trash2Img from "../../assets/sprites/river-game-sprites/trash2.png";
 import trash3Img from "../../assets/sprites/river-game-sprites/trash3.png";
 import trash4Img from "../../assets/sprites/river-game-sprites/trash4.png";
 import salmonImg from "../../assets/sprites/river-game-sprites/salmon.png";
+import yellowfinImg from "../../assets/sprites/river-game-sprites/yellowfin.png";
+import tunaImg from "../../assets/sprites/river-game-sprites/tuna.png";
+import red_snapperImg from "../../assets/sprites/river-game-sprites/red_snapper.png";
+import mackerelImg from "../../assets/sprites/river-game-sprites/mackerel.png";
 import livesImg from "../../assets/sprites/river-game-sprites/lives.png";
 import wavingBearImg from "../../assets/sprites/river-game-sprites/wavingbear.png";
 import settingsCogImg from "../../assets/settings_cog.png";
@@ -28,11 +32,15 @@ const A = {
   trash3: trash3Img,
   trash4: trash4Img,
   salmon: salmonImg,
+  yellowfin: yellowfinImg,
+  tuna: tunaImg,
+  red_snapper: red_snapperImg,
+  mackerel: mackerelImg,
   lives: livesImg,
 };
 
 const TRASH_ASSETS = [A.trash2, A.trash3, A.trash4];
-const FISH_ASSETS = [A.salmon];
+const FISH_ASSETS = [A.salmon, A.yellowfin, A.tuna, A.red_snapper, A.mackerel];
 
 const CFG = {
   normal: {
@@ -877,8 +885,30 @@ export default function RiverGame() {
           } else {
             stateRef.current.fishCount++;
             stateRef.current.trashCombo = 0;
-            stateRef.current.score += 10;
-            updateScore(10);
+            if(type === 'salmonImg') {
+              stateRef.current.score += 10;
+              updateScore(10);
+            }
+            else if(type === 'mackerelImg') {
+              stateRef.current.score += 20;
+              updateScore(20);
+            }
+            else if(type === 'red_snapperImg') {
+              stateRef.current.score += 30;
+              updateScore(30);
+            }
+            else if(type === 'yellowfinImg') {
+              stateRef.current.score += 40;
+              updateScore(40);
+            }
+            else if(type === 'tunaImg') {
+              stateRef.current.score += 50;
+              updateScore(50);
+            }
+            else {
+              stateRef.current.score += 100;
+              updateScore(100);
+            }
             updateFishCount();
             updateTrashCombo();
             popupImg(src, "+1", "#4fc3e8", CATCH_X, catcherY - 40);
