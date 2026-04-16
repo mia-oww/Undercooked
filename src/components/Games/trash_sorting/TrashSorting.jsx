@@ -7,7 +7,7 @@ import Settings from "../../Settings";
 import blankHoneyImg from "../../../assets/sprites/fish-prep/blankhoney.png";
 import filledHoneyImg from "../../../assets/sprites/fish-prep/honey2.png";
 import wavingBearImg from "../../../assets/sprites/river-game-sprites/wavingbear.png";
-import homescreenImg from "../../../assets/trees_background1.png"; 
+//import homescreenImg from "../../../assets/trees_background1.png"; 
 import trash2Img from "../../../assets/sprites/river-game-sprites/trash2.png";
 import trash3Img from "../../../assets/sprites/river-game-sprites/trash3.png";
 import trash4Img from "../../../assets/sprites/river-game-sprites/trash4.png";
@@ -16,6 +16,8 @@ import plasticBag from "../../../assets/sprites/trash-sorting/plastic_bag.png";
 import sodaCan from "../../../assets/sprites/trash-sorting/soda_can.png";
 import plasticBottle from "../../../assets/sprites/trash-sorting/plastic_bottle.png";
 
+// bg
+import homescreenImg from "../../../assets/story_pngs/story1.3.png";
 // BINS
 import compostBinImg from "../../../assets/sprites/trash-sorting/compostbin.png";
 import recycleBinImg from "../../../assets/sprites/trash-sorting/recyclebin.png";
@@ -239,6 +241,8 @@ def newGame(seed=None):
 `;
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
+const CURRENT_LEVEL_ID = 4;
+
 const DIALOGUE = [
   { speaker: "Bear", text: "Welcome to the recycling station! After a big sushi day, there's a lot of waste to handle." },
   { speaker: "Bear", text: "Not everything goes in the same bin, the wrong choice can hurt the environment!" },
@@ -360,6 +364,7 @@ export default function RecycleGame() {
   const [dialogueIndex, setDialogueIndex] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+  const [introReady, setIntroReady] = useState(false);
 
   // Pyodide
   const [pyReady, setPyReady] = useState(false);
@@ -462,7 +467,38 @@ useEffect(() => {
   }, 500);
   return () => clearInterval(id);
 }, [pyReady, gameStarted, gameState?.started, gameState?.finished, showResults]);
-  // ── Finish → show results ─────────────────────────────────────────────────────
+
+useEffect(() => {
+  if (!pyReady) return;
+
+  async function checkSkipIntro() {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("level")
+        .eq("user_id", session.user.id)
+        .single();
+
+      if (!error && profile?.level > CURRENT_LEVEL_ID) {
+        setGameStarted(true);
+        setIntroReady(true);
+        return;
+      }
+    } catch (error) {
+      console.error("Failed to check intro skip:", error);
+    }
+
+    setIntroReady(true);
+  }
+
+  checkSkipIntro();
+}, []);
+  // ── Finish → show results —────────────────────────────────────────────────────
 useEffect(() => {
   if (!gameState?.finished || showResults) return;
   const stars = calcStars(gameState.score, gameState.misses, gameState.criticalMisses);
@@ -794,9 +830,8 @@ function onTouchMove(e) {
         <button className="rg-top-btn" onClick={() => navigate("/level-selection")}>← Menu</button>
         <button className="rg-top-btn" onClick={handleReset}>↺ Reset</button>
       </div>*/}
-      {gameStarted && (
   <button onClick={() => setShowSettings(true)} title="Settings" style={{
-    position: "fixed", top: "14px", right: "14px", zIndex: 30,
+    position: "fixed", top: "14px", right: "14px", zIndex: 999,
     width: "46px", height: "46px",
     background: "rgba(255,255,255,0.22)",
     backdropFilter: "blur(14px) saturate(1.6)",
@@ -804,13 +839,13 @@ function onTouchMove(e) {
     boxShadow: "0 4px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)",
     cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
     transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+    pointerEvents: "auto",
   }}
     onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1) rotate(22deg)"}
     onMouseLeave={e => e.currentTarget.style.transform = "scale(1) rotate(0deg)"}
   >
     <img src={settingsCogImg} alt="settings" style={{ width: "26px", height: "26px", objectFit: "contain" }} />
   </button>
-)}
 
       {/* ── Feedback hint bar — bottom center, like FishPrepGame ── */}
       {gameStarted && feedback && (
@@ -1006,7 +1041,7 @@ function onTouchMove(e) {
       )}
 
       {/* ── Intro dialogue ── */}
-      {pyReady && !gameStarted && (
+      {pyReady && introReady && !gameStarted && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 300,
           background: "rgba(0,0,0,0.6)",

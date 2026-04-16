@@ -64,6 +64,7 @@ export default function FishPrepGame() {
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
+  const [introReady, setIntroReady] = useState(false);
   const [dialogueIndex, setDialogueIndex] = useState(0);
   const [sustainabilityScore, setSustainabilityScore] = useState(3);
   const [stage, setStageState] = useState("grab_fish");
@@ -543,6 +544,36 @@ export default function FishPrepGame() {
     saveProgress();
   }, [showResults]);
 
+  useEffect(() => {
+    async function checkSkipIntro() {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          const { data: profile, error } = await supabase
+            .from("profiles")
+            .select("level")
+            .eq("user_id", session.user.id)
+            .single();
+
+          if (!error && profile?.level > currentLevelId) {
+            startGame();
+            setIntroReady(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check intro skip:", error);
+      }
+
+      setIntroReady(true);
+    }
+
+    checkSkipIntro();
+  }, [currentLevelId, startGame]);
+
   const onFishtrayPointerDown = (e) => {
     if (stageRef.current !== "grab_fish") return;
     e.preventDefault();
@@ -808,7 +839,7 @@ export default function FishPrepGame() {
       )}
 
       {/* Intro dialogue — exactly like river game */}
-      {!gameStarted && !showResults && (
+      {introReady && !gameStarted && !showResults && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50 }}>
 
           {/* Skip button */}

@@ -415,6 +415,7 @@ export default function RiverGame() {
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [dialogueIndex, setDialogueIndex] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
+  const [introReady, setIntroReady] = useState(false);
   const [endScreen, setEndScreen] = useState(null);
   const [honeyStars, setHoneyStars] = useState([false, false, false]);
 
@@ -1097,6 +1098,36 @@ export default function RiverGame() {
   }, [levelId, startGame]);
 
   useEffect(() => {
+    async function checkSkipIntro() {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          const { data: profile, error } = await supabase
+            .from("profiles")
+            .select("level")
+            .eq("user_id", session.user.id)
+            .single();
+
+          if (!error && profile?.level > currentLevelId) {
+            startGame();
+            setIntroReady(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check intro skip:", error);
+      }
+
+      setIntroReady(true);
+    }
+
+    checkSkipIntro();
+  }, [currentLevelId, startGame]);
+
+  useEffect(() => {
     const styleEl = document.createElement("style");
     styleEl.textContent = STYLES;
     document.head.appendChild(styleEl);
@@ -1434,7 +1465,7 @@ export default function RiverGame() {
         </div>
       )}
 
-      {!gameStarted && !endScreen && (
+      {introReady && !gameStarted && !endScreen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50 }}>
           <button
             onClick={() => {
