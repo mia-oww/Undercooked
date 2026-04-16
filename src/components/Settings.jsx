@@ -226,6 +226,7 @@ export default function Settings({ onClose, background, extraButtons }) {
     { label: "Hints", value: hints, setter: setHints },
   ];
 
+
   if (!ready) return null;
 
   return (
@@ -248,78 +249,100 @@ export default function Settings({ onClose, background, extraButtons }) {
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: "60vw",
-          maxWidth: "800px",
-          background: "rgba(255,255,255,0.75)",
-          borderRadius: "35px",
-          padding: "50px",
+          width: "min(580px, 230vw)",
+          height: "min(720px, 80vh)",
+          background: "rgba(255,255,255,0.92)",
+          borderRadius: "30px",
+          padding: "28px",
           backdropFilter: "blur(18px)",
-          boxShadow: "0 25px 50px rgba(0,0,0,0.15)",
+          boxShadow: "0 25px 50px rgba(0,0,0,0.16)",
           zIndex: 1,
           fontFamily: "'Fredoka One', cursive",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
-        <h1 style={{ textAlign: "center", fontSize: "52px", marginBottom: "40px" }}>
+        <h1 style={{ textAlign: "center", fontSize: "38px", marginBottom: "24px" }}>
           SETTINGS
         </h1>
 
-        {sliderRows.map((row) => (
-          <div key={row.label} style={{ marginBottom: "40px" }}>
-            <div style={{ fontSize: "26px", marginBottom: "12px" }}>{row.label}</div>
-            <div className="sliderWrap" style={{ "--val": row.value / 100 }}>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={row.value}
-                className="sushiRange"
-                onChange={(e) => row.setter(Number(e.target.value))}
-                style={{
-                  background: `linear-gradient(
-                    to right,
-                    #7FBF3F 0%,
-                    #7FBF3F ${row.value}%,
-                    #dfe8d1 ${row.value}%,
-                    #dfe8d1 100%
-                  )`,
-                }}
-              />
-              <img className="sushiKnob" src={row.img} alt="" draggable={false} />
+        <div style={{ flex: 1, overflowY: "auto", paddingRight: "8px" }}>
+          {sliderRows.map((row) => (
+            <div key={row.label} style={{ marginBottom: "32px" }}>
+              <div style={{ fontSize: "24px", marginBottom: "10px" }}>{row.label}</div>
+              <div className="sliderWrap" style={{ "--val": row.value / 100 }}>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={row.value}
+                  className="sushiRange"
+                  onChange={(e) => row.setter(Number(e.target.value))}
+                  style={{
+                    background: `linear-gradient(
+                      to right,
+                      #7FBF3F 0%,
+                      #7FBF3F ${row.value}%,
+                      #dfe8d1 ${row.value}%,
+                      #dfe8d1 100%
+                    )`,
+                  }}
+                />
+                <img className="sushiKnob" src={row.img} alt="" draggable={false} />
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {toggleRows.map((row) => (
+          {toggleRows.map((row) => (
+            <div
+              key={row.label}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: "22px",
+                fontSize: "24px",
+              }}
+            >
+              {row.label}
+              <label className="switch">
+                <input type="checkbox" checked={row.value} onChange={() => row.setter(!row.value)} />
+                <span className="slider" />
+              </label>
+            </div>
+          ))}
+
           <div
-            key={row.label}
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "25px",
-              fontSize: "26px",
+              marginTop: "22px",
+              padding: "18px",
+              borderRadius: "20px",
+              background: "rgba(255,240,240,0.92)",
+              border: "1px solid rgba(220,100,100,0.35)",
             }}
           >
-            {row.label}
-            <label className="switch">
-              <input type="checkbox" checked={row.value} onChange={() => row.setter(!row.value)} />
-              <span className="slider" />
-            </label>
+            <div style={{ fontSize: "18px", fontWeight: 800, color: "#c0392b", marginBottom: "6px" }}>
+              DANGER ZONE
+            </div>
+            <div style={{ fontSize: "14px", lineHeight: 1.5, color: "#5a2d2d", marginBottom: "14px" }}>
+              Warning: this setting will permanently erase your progress.
+            </div>
+            <button style={dangerButtonStyle} onClick={handleResetProgress}>Reset Progress</button>
           </div>
-        ))}
+        </div>
 
         <div
           style={{
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            marginTop: "40px",
+            marginTop: "18px",
             flexWrap: "wrap",
             gap: "12px",
           }}
         >
           <button style={buttonStyle} onClick={handleSave}>Save</button>
-          <button style={buttonStyle} onClick={handleReset}>Reset</button>
-          <button style={dangerButtonStyle} onClick={handleResetProgress}>Reset Progress</button>
+          <button style={buttonStyle} onClick={handleReset}>Reset Settings</button>
           <button style={buttonStyle} onClick={handleExit}>Exit</button>
           {extraButtons}
         </div>

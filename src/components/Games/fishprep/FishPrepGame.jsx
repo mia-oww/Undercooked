@@ -61,8 +61,10 @@ const currentLevelId = 2; // Assuming this is level 2
 export default function FishPrepGame() {
   const navigate = useNavigate();
   const [showSettings, setShowSettings] = useState(false);
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
+  const [introReady, setIntroReady] = useState(false);
   const [dialogueIndex, setDialogueIndex] = useState(0);
   const [sustainabilityScore, setSustainabilityScore] = useState(3);
   const [stage, setStageState] = useState("grab_fish");
@@ -542,6 +544,36 @@ export default function FishPrepGame() {
     saveProgress();
   }, [showResults]);
 
+  useEffect(() => {
+    async function checkSkipIntro() {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          const { data: profile, error } = await supabase
+            .from("profiles")
+            .select("level")
+            .eq("user_id", session.user.id)
+            .single();
+
+          if (!error && profile?.level > currentLevelId) {
+            startGame();
+            setIntroReady(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check intro skip:", error);
+      }
+
+      setIntroReady(true);
+    }
+
+    checkSkipIntro();
+  }, [currentLevelId, startGame]);
+
   const onFishtrayPointerDown = (e) => {
     if (stageRef.current !== "grab_fish") return;
     e.preventDefault();
@@ -628,6 +660,83 @@ export default function FishPrepGame() {
     boxShadow: "0 8px 15px rgba(0,0,0,0.15)",
     fontFamily: "'Fredoka One', cursive",
     transition: "transform 0.1s ease",
+  };
+
+  const QuitConfirmModal = ({ onConfirm, onCancel }) => {
+    const btnBase = {
+      padding: "12px 32px",
+      fontSize: "18px",
+      borderRadius: "16px",
+      border: "none",
+      cursor: "pointer",
+      fontFamily: "'Fredoka One', cursive",
+      transition: "transform 0.1s ease",
+      boxShadow: "0 6px 12px rgba(0,0,0,0.12)",
+    };
+
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 80,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(0,0,0,0.45)",
+          backdropFilter: "blur(4px)",
+        }}
+      >
+        <div
+          style={{
+            background: "rgba(255,255,255,0.95)",
+            borderRadius: "28px",
+            padding: "44px 48px",
+            maxWidth: "420px",
+            width: "90vw",
+            textAlign: "center",
+            boxShadow: "0 24px 48px rgba(0,0,0,0.2)",
+            fontFamily: "'Fredoka One', cursive",
+          }}
+        >
+          <div style={{ fontSize: "3rem", marginBottom: "12px" }}>🏠</div>
+          <h2 style={{ fontSize: "28px", color: "#3d2e1e", margin: "0 0 10px" }}>
+            Go to Main Menu?
+          </h2>
+          <p
+            style={{
+              fontFamily: "'Nunito', sans-serif",
+              fontSize: "16px",
+              color: "#7a6a58",
+              lineHeight: 1.6,
+              margin: "0 0 32px",
+            }}
+          >
+            Your current progress won't be saved.
+            <br />
+            Are you sure you want to leave?
+          </p>
+          <div style={{ display: "flex", gap: "14px", justifyContent: "center" }}>
+            <button
+              onClick={onCancel}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              style={{ ...btnBase, backgroundColor: "#e8e1cf", color: "#3d2e1e" }}
+            >
+              Keep Playing
+            </button>
+            <button
+              onClick={onConfirm}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              style={{ ...btnBase, backgroundColor: "#7FBF3F", color: "white" }}
+            >
+              Leave
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -730,7 +839,7 @@ export default function FishPrepGame() {
       )}
 
       {/* Intro dialogue — exactly like river game */}
-      {!gameStarted && !showResults && (
+      {introReady && !gameStarted && !showResults && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50 }}>
 
           {/* Skip button */}
@@ -931,12 +1040,12 @@ export default function FishPrepGame() {
             onClose={() => setShowSettings(false)}
             extraButtons={
               <button
-                onClick={() => navigate("/level-selection")}
+                onClick={() => setShowQuitConfirm(true)}
                 onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
                 onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
                 style={{
                   padding: "14px 38px", fontSize: "20px", borderRadius: "18px",
-                  border: "none", backgroundColor: "#c0392b", color: "white",
+                  border: "none", backgroundColor: "#7FBF3F", color: "white",
                   cursor: "pointer", boxShadow: "0 8px 15px rgba(0,0,0,0.15)",
                   fontFamily: "'Fredoka One', cursive", transition: "transform 0.1s ease",
                 }}>
@@ -945,6 +1054,17 @@ export default function FishPrepGame() {
             }
           />
         </div>
+      )}
+
+      {showQuitConfirm && (
+        <QuitConfirmModal
+          onConfirm={() => {
+            setShowQuitConfirm(false);
+            setShowSettings(false);
+            navigate("/level-selection");
+          }}
+          onCancel={() => setShowQuitConfirm(false)}
+        />
       )}
     </div>
   );
