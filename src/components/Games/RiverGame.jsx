@@ -52,8 +52,8 @@ const A = {
 };
 
 const TRASH_ASSETS = [A.trash2, A.trash3, A.trash4, A.plasticBottle, A.compostBottle, A.plasticBag, A.sodaCan];
-const FISH_ASSETS = [A.salmon, A.yellowfin, A.tuna, A.red_snapper, A.mackerel, A.golden, A.rainbow];
-
+const FISH_ASSETS_COMMON = [A.salmon, A.yellowfin, A.tuna, A.red_snapper, A.mackerel];
+const FISH_ASSETS_RARE = [A.golden, A.rainbow]; // spawned separately at low chance
 const CFG = {
   normal: {
     spawnDelay: 1800,
@@ -314,22 +314,14 @@ const STYLES = `
   }
 
   /* ── Honey jars ───────────────────────────────── */
-  .honey {
-    width: clamp(64px, 9vw, 110px);
-    height: clamp(64px, 9vw, 110px);
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0.35;
-    transform: scale(0.88);
-    transition: opacity 0.3s ease, transform 0.3s ease;
-  }
-  .honey img { width: 100%; height: 100%; object-fit: contain; }
-  .honey.earned { opacity: 1; transform: scale(1); }
-  .honey.pop { animation: honeyPop 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-  @keyframes honeyPop {
-    0%   { transform: scale(0.6); opacity: 0.4; }
-    60%  { transform: scale(1.25); opacity: 1; }
-    100% { transform: scale(1);   opacity: 1; }
-  }
+.honey {
+  width: clamp(64px, 9vw, 110px);
+  height: clamp(64px, 9vw, 110px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0.3;
+}
+.honey img { width: 100%; height: 100%; object-fit: contain; }
+.honey.earned { opacity: 1; }
 `;
 
 function QuitConfirmModal({ onConfirm, onCancel }) {
@@ -457,7 +449,8 @@ export default function RiverGame() {
   const sceneRef = useRef(null);
   const scoreDisplayRef = useRef(null);
   const livesDisplayRef = useRef(null);
-  const comboDisplayRef = useRef(null);
+  const fishComboDisplayRef = useRef(null);
+  const trashComboDisplayRef = useRef(null);
   const fishValRef = useRef(null);
   const timerDisplayRef = useRef(null);
   const hardBadgeRef = useRef(null);
@@ -472,22 +465,23 @@ export default function RiverGame() {
   const updateTimerRef = useRef(null);
   const endGameRef = useRef(null);
 
-  // Animate honey jars when end screen appears
   useEffect(() => {
-    if (!endScreen) return;
-    setHoneyStars([false, false, false]);
-    [0, 1, 2].forEach((i) => {
-      if (i < endScreen.earnedStars) {
-        setTimeout(() => {
-          setHoneyStars((prev) => {
-            const next = [...prev];
-            next[i] = true;
-            return next;
-          });
-        }, 600 + i * 450);
-      }
-    });
-  }, [endScreen]);
+  if (!endScreen) return;
+  const stars = endScreen.earnedStars;
+  setHoneyStars([false, false, false]);
+  const timeouts = [];
+  for (let i = 0; i < stars; i++) {
+    const t = setTimeout(() => {
+      setHoneyStars((prev) => {
+        const next = [...prev];
+        next[i] = true;
+        return next;
+      });
+    }, 600 + i * 450);
+    timeouts.push(t);
+  }
+  return () => timeouts.forEach(clearTimeout);
+}, [endScreen?.earnedStars]);  // ← depend on the value, not the whole object
 
   const layout = useCallback(() => {
     const s = stateRef.current;
@@ -627,16 +621,16 @@ export default function RiverGame() {
 
   const updateTrashCombo = useCallback(() => {
     const { trashCombo } = stateRef.current;
-    if (comboDisplayRef.current) {
-      comboDisplayRef.current.textContent =
+    if (trashComboDisplayRef.current) {
+      trashComboDisplayRef.current.textContent =
         trashCombo >= 3 ? `🔥 x${trashCombo}` : trashCombo > 0 ? `✨ x${trashCombo}` : "—";
     }
   }, []);
 
   const updateFishCombo = useCallback(() => {
     const { fishCombo } = stateRef.current;
-    if (comboDisplayRef.current) {
-      comboDisplayRef.current.textContent =
+    if (fishComboDisplayRef.current) {
+      fishComboDisplayRef.current.textContent =
         fishCombo >= 3 ? `🔥 x${fishCombo}` : fishCombo > 0 ? `✨ x${fishCombo}` : "—";
     }
   }, []);
@@ -822,9 +816,21 @@ export default function RiverGame() {
     if (!s.gameRunning) return;
 
     const isTrash = Math.random() > 0.45;
-    const assets = isTrash ? TRASH_ASSETS : FISH_ASSETS;
-    const src = assets[Math.floor(Math.random() * assets.length)];
-    const type = isTrash ? "trash" : "fish";
+  let src, type;
+  if (isTrash) {
+    src = TRASH_ASSETS[Math.floor(Math.random() * TRASH_ASSETS.length)];
+    type = "trash";
+  } else {
+    const roll = Math.random();
+    if (roll < 0.03) {
+      src = A.rainbow;           // ~8% of fish spawns
+    } else if (roll < 0.7) {
+      src = A.golden;            // ~8% of fish spawns
+    } else {
+      src = FISH_ASSETS_COMMON[Math.floor(Math.random() * FISH_ASSETS_COMMON.length)];
+    }
+    type = "fish";
+  }
 
     const riverCap = Math.floor(s.RIVER_H * 0.22);
     let sz;
@@ -862,6 +868,14 @@ export default function RiverGame() {
     img.src = src;
     img.alt = type;
     el.appendChild(img);
+
+    if (!isTrash) {
+      if (src === A.rainbow) {
+        el.style.filter = "drop-shadow(0 0 18px rgba(255,105,180,0.75))";
+      } else if (src === A.golden) {
+        el.style.filter = "drop-shadow(0 0 18px rgba(255,215,0,0.75))";
+      }
+    }
 
     const bob = 1.4 + Math.random() * 1.2;
     el.style.animationDuration = `${dur}ms, ${bob}s`;
@@ -908,8 +922,8 @@ export default function RiverGame() {
           } else {
             stateRef.current.fishCount++;
             stateRef.current.fishCombo++;
-            stateRef.current.trashCombo = 0;
-            const pts = 10 * (stateRef.current.fishCombo >= 3 ? 2 : 1);
+            const baseBonus = src === A.rainbow ? 100 : src === A.golden ? 50 : 10;
+            const pts = baseBonus * (stateRef.current.fishCombo >= 3 ? 2 : 1);
             stateRef.current.score += pts;
             updateScore(pts);
             updateFishCombo();
@@ -920,27 +934,7 @@ export default function RiverGame() {
               CATCH_X,
               catcherY - 40
             );
-            if (type === 'salmonImg') {
-              stateRef.current.score += 10;
-              updateScore(10);
-            } else if (type === 'mackerelImg') {
-              stateRef.current.score += 20;
-              updateScore(20);
-            } else if (type === 'red_snapperImg') {
-              stateRef.current.score += 30;
-              updateScore(30);
-            } else if (type === 'yellowfinImg') {
-              stateRef.current.score += 40;
-              updateScore(40);
-            } else if (type === 'tunaImg') {
-              stateRef.current.score += 50;
-              updateScore(50);
-            } else {
-              stateRef.current.score += 100;
-              updateScore(100);
-            }
             updateFishCount();
-            updateTrashCombo();
             popupImg(src, "+1", "#4fc3e8", CATCH_X, catcherY - 40);
           }
 
@@ -952,11 +946,17 @@ export default function RiverGame() {
             setTimeout(() => c.classList.remove("rr-catch-anim"), 400);
           }
         } else {
-          stateRef.current.trashCombo = 0;
+          stateRef.current.fishCombo = 0;
+          updateFishCombo();
+
+          if (type === "trash") {
+            stateRef.current.trashCombo = 0;
+            updateTrashCombo();
+          }
+
           stateRef.current.lives--;
           updateScore(-1);
           updateLives();
-          updateTrashCombo();
 
           const c = catcherRef.current;
           if (c) {
@@ -966,7 +966,7 @@ export default function RiverGame() {
             setTimeout(() => c.classList.remove("rr-miss-anim"), 400);
           }
 
-          popup(wrongCatch ? "✖ WRONG!" : "✖ MISSED!", "#e74c3c", CATCH_X, itemSceneY - 30);
+          popup(wrongCatch ? "✖ Wrong!" : "✖ Missed!", "#e74c3c", CATCH_X, itemSceneY - 30);
 
           if (stateRef.current.lives <= 0) endGame();
         }
@@ -1201,7 +1201,7 @@ export default function RiverGame() {
     { speaker: "Narrator", text: "Oh no! The river is full of trash,clean it up while catching salmon for our hungry customers!" },
     { speaker: "Narrator", text: "Move your mouse up and down to position your catcher along the left edge of the river." },
     { speaker: "Bear", text: "Switch between the Trash Can and Fish Net using SPACE or the button above. Only catch what matches!" },
-    { speaker: "Bear", text: "Build a trash streak for bonus points, and catch as many salmon as you can. Good luck!" },
+    { speaker: "Bear", text: "Build a trash combo for bonus points, and catch as many salmon as you can. Good luck!" },
   ];
 
   const isLastDialogue = dialogueIndex === INTRO_DIALOGUE.length - 1;
@@ -1230,7 +1230,6 @@ export default function RiverGame() {
     cursor: "pointer",
     boxShadow: "0 8px 15px rgba(0,0,0,0.15)",
     fontFamily: "'Fredoka One', cursive",
-    transition: "transform 0.1s ease",
   };
 
   return (
@@ -1253,8 +1252,12 @@ export default function RiverGame() {
           <span className="rr-hud-val" id="rr-score-display" ref={scoreDisplayRef}>0</span>
         </div>
         <div className="rr-hud-block">
-          <span className="rr-hud-label">Trash Streak</span>
-          <span id="rr-combo-display" ref={comboDisplayRef}>—</span>
+          <span className="rr-hud-label">Fish Combo</span>
+          <span className="rr-hud-val" id="rr-fish-combo-display" ref={fishComboDisplayRef}>—</span>
+        </div>
+        <div className="rr-hud-block">
+          <span className="rr-hud-label">Trash Combo</span>
+          <span className="rr-hud-val" id="rr-trash-combo-display" ref={trashComboDisplayRef}>—</span>
         </div>
         <button id="rr-toggle-btn" ref={toggleBtnRef} className="rr-trash-mode" onClick={toggleMode}>
           <img className="rr-mode-icon" ref={modeIconRef} src={A.trashcan} alt="mode" />
@@ -1363,7 +1366,7 @@ export default function RiverGame() {
             </div>
             <div style={{ display: "flex", gap: "8px", justifyContent: "center", margin: "18px 0" }}>
               {[0, 1, 2].map((i) => (
-                <div key={i} className={`honey${honeyStars[i] ? " earned pop" : ""}`}>
+                <div key={i} className={`honey${honeyStars[i] ? " earned " : ""}`}>
                   <img src={honeyStars[i] ? filledHoneyImg : blankHoneyImg} alt="" />
                 </div>
               ))}
