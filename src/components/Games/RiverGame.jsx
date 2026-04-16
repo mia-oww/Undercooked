@@ -23,6 +23,10 @@ import wavingBearImg from "../../assets/sprites/river-game-sprites/wavingbear.pn
 import settingsCogImg from "../../assets/settings_cog.png";
 import blankHoneyImg from "../../assets/sprites/fish-prep/blankhoney.png";
 import filledHoneyImg from "../../assets/sprites/fish-prep/honey2.png";
+import plasticBottle from "../../assets/sprites/trash-sorting/plastic_bottle.png";
+import compostBottle from "../../assets/sprites/trash-sorting/compost_bottle.png";
+import plasticBag from "../../assets/sprites/trash-sorting/plastic_bag.png";
+import sodaCan from "../../assets/sprites/trash-sorting/soda_can.png";
 
 const A = {
   grass: grassImg,
@@ -31,6 +35,10 @@ const A = {
   trash2: trash2Img,
   trash3: trash3Img,
   trash4: trash4Img,
+  plasticBottle: plasticBottle,
+  compostBottle: compostBottle,
+  plasticBag: plasticBag,
+  sodaCan: sodaCan,
   salmon: salmonImg,
   yellowfin: yellowfinImg,
   tuna: tunaImg,
@@ -39,7 +47,7 @@ const A = {
   lives: livesImg,
 };
 
-const TRASH_ASSETS = [A.trash2, A.trash3, A.trash4];
+const TRASH_ASSETS = [A.trash2, A.trash3, A.trash4, A.plasticBottle, A.compostBottle, A.plasticBag, A.sodaCan];
 const FISH_ASSETS = [A.salmon, A.yellowfin, A.tuna, A.red_snapper, A.mackerel];
 
 const CFG = {
