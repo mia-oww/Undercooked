@@ -40,7 +40,7 @@ export default function Game() {
     () => ({
       about:
         "Sustainabear is a culinary-themed game where players match ingredients to complete recipes while managing a growing restaurant. Success depends not only on speed and strategy, but also on making sustainable choices that reduce food waste and improve efficiency.",
-      team: "This game is presented to you by the Overcooked Team.\n...",
+      team: "This game is presented to you by the Overcooked Team.\n\n ~View our code here~ \n https://github.com/mia-oww/Undercooked",
       achievements: "- 🍣 First Dish: Finish the first chapter\n\n- ⭐️ Triple Threat: Earn 3 stars on any level.\n\n- 🌱 Sustainable Master: Reach maximum sustainability score.\n\n- 🎯 On a Roll! : Complete 5 levels in a row without failing. \n\n- 🏅 Perfect Plate: Earn 3 stars on ALL levels.\n\n- 💎 Cosmetic Completionist: Collect every cosmetic in the game.\n",
     }),
     []
