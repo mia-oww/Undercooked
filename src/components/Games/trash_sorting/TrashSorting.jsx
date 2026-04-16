@@ -12,7 +12,9 @@ import trash2Img from "../../../assets/sprites/river-game-sprites/trash2.png";
 import trash3Img from "../../../assets/sprites/river-game-sprites/trash3.png";
 import trash4Img from "../../../assets/sprites/river-game-sprites/trash4.png";
 import trashcanImg from "../../../assets/sprites/river-game-sprites/trashcan.png";
-
+import plasticBag from "../../../assets/sprites/trash-sorting/plastic_bag.png";
+import sodaCan from "../../../assets/sprites/trash-sorting/soda_can.png";
+import plasticBottle from "../../../assets/sprites/trash-sorting/plastic_bottle.png";
 
 // BINS
 import compostBinImg from "../../../assets/sprites/trash-sorting/compostbin.png";
@@ -26,6 +28,7 @@ import bonefishImg from "../../../assets/sprites/fish-prep/fishbone2.png";
 import fishtailImg from "../../../assets/sprites/fish-prep/fishtail.png";
 import bananaImg from "../../../assets/sprites/trash-sorting/banana_compost.png"; 
 import appleImg from "../../../assets/sprites/trash-sorting/apple_compost.png";
+import compostBottle from "../../../assets/sprites/trash-sorting/compost_bottle.png";
 // landfill:
 import batteryImg from "../../../assets/sprites/trash-sorting/battery.png";
 
@@ -42,11 +45,15 @@ const ITEM_IMAGES = {
   "Mask": trash4Img,
   "Battery": batteryImg,
   "SPECIAL":  batteryImg,
+  "Plastic bottle": plasticBottle,
+  "Compost bottle": compostBottle,
+  "Soda can": sodaCan,
+  "Plastic bag": plasticBag
 };
 const CATEGORY_IMAGE_POOLS = {
-  COMPOST: [bananaImg, appleImg, fishtailImg],   // add more compost images here
-  RECYCLE: [trash3Img, trash2Img],                         // add more recycle images here
-  LANDFILL: [trash4Img, batteryImg],                        // add more landfill images here
+  COMPOST: [bananaImg, appleImg, fishtailImg, compostBottle],   // add more compost images here
+  RECYCLE: [trash3Img, trash2Img, plasticBottle, plasticBag, sodaCan],                         // add more recycle images here
+  LANDFILL: [trash4Img ],                        // add more landfill images here
   SPECIAL: [batteryImg],                       // add more special images here
 };
 const BIN_IMAGES = {
@@ -61,14 +68,32 @@ const ITEM_BANK = [
   { name: "Banana", category: "COMPOST", img: bananaImg, why: "Banana peels are organic and break down naturally in compost.", whyNot: "This is organic food waste, it doesn't belong here." },
   { name: "Apple", category: "COMPOST", img: appleImg, why: "Apple cores are organic food waste perfect for composting.", whyNot: "This is organic food waste, it doesn't belong here." },
   { name: "Fish tail", category: "COMPOST", img: fishtailImg, why: "Fish tails are organic and can be composted.", whyNot: "This is organic food waste it doesn't belong here." },
+  { name: "Compost bottle", category: "COMPOST", img: compostBottle, why: "Compostable bottles can go in the compost bin.", whyNot: "This is a compostable item, it doesn't belong here." },
   // RECYCLE
   { name: "Aluminum Can", category: "RECYCLE", img: trash2Img, why: "Aluminum cans are recyclable!", whyNot: "This is recyclable metal, it doesn't belong here." },
   { name: "Shrink Wrap", category: "RECYCLE", img: trash3Img, why: "Shrink wrap is recyclable.", whyNot: "This is recyclable plastic, it doesn't belong here." },
+  { name: "Plastic bottle", category: "RECYCLE", img: plasticBottle, why: "Clean plastic bottles can be recycled.", whyNot: "This is recyclable plastic, it doesn't belong here." },
+  { name: "Soda can", category: "RECYCLE", img: sodaCan, why: "Soda cans are made of aluminum and can be recycled.", whyNot: "This is recyclable metal, it doesn't belong here." },
+  { name: "Plastic bag", category: "RECYCLE", img: plasticBag, why: "Many plastic bags can be recycled at special drop-off locations.", whyNot: "This is recyclable plastic, it doesn't belong here." },
   // LANDFILL
   { name: "Mask", category: "LANDFILL", img: trash4Img, why: "Masks are non-recyclable and should be disposed of in the landfill.", whyNot: "This is non-recyclable plastic — it doesn't belong here." },
   // SPECIAL
   { name: "Battery", category: "SPECIAL", img: batteryImg, why: "Batteries need special disposal to prevent chemical leaks.", whyNot: "This is hazardous — it doesn't belong here." },
 ];
+
+const ITEM_SIZE_OVERRIDES = {
+  banana:      { w: 120, h: 62 },
+  apple:       { w: 120, h: 62 },
+  "fish tail": { w: 120, h: 68 },
+  "aluminum can": { w: 110, h: 56 },
+  "shrink wrap": { w: 110, h: 58 },
+  mask:        { w: 100, h: 54 },
+  battery:     { w: 150, h: 95 },
+  "plastic bottle": { w: 120, h: 58 },
+  "compost bottle": { w: 120, h: 58 },
+  "soda can": { w: 120, h: 58 },
+  "plastic bag": { w: 120, h: 58 }
+};
 
 
 // ─── Pyodide / Python game logic ──────────────────────────────────────────────
@@ -133,11 +158,13 @@ class Game:
                 ("Banana", "COMPOST", "Banana peels are organic and break down naturally in compost.", "This is organic waste, it doesn't belong here."),
                 ("Apple", "COMPOST", "Apple cores are organic food waste perfect for composting.", "This is organic waste, it doesn't belong here."),
                 ("Fish tail", "COMPOST", "Fish tails are organic and can be composted.", "This is organic waste, it doesn't belong here."),
-                ("Aluminum can", "RECYCLE", "Aluminum cans are recyclable!", "This is recyclable metal, it doesn't belong here."),
                 ("Plastic bottle", "RECYCLE", "Clean plastic bottles can be recycled.", "This is recyclable plastic, it doesn't belong here."),
                 ("Shrink Wrap", "RECYCLE", "Shrink wrap is recyclable.", "This is recyclable plastic, it doesn't belong here."),
                 ("Battery", "SPECIAL", "Batteries need special disposal to prevent chemical leaks.", "This is hazardous, it doesn't belong here."),
-            ]
+                ("Compost bottle", "COMPOST", "Compostable bottles can go in the compost bin.", "This is a compostable item, it doesn't belong here."),
+                ("Soda can", "RECYCLE", "Soda cans are made of aluminum and can be recycled.", "This is recyclable metal, it doesn't belong here."),
+                ("Plastic bag", "RECYCLE", "Many plastic bags can be recycled at special drop-off locations.", "This is recyclable plastic, it doesn't belong here."),
+                ]
         rng.shuffle(sushiTrashBank)
         items = []
         iid = 1
@@ -280,8 +307,8 @@ export default function RecycleGame() {
 
   // Canvas / layout refs
   const containerRef = useRef(null);
-  const animFrameRef = useRef(null);
-  const tickRef = useRef(null);
+  //const animFrameRef = useRef(null);
+  //const tickRef = useRef(null);
 
   // ── Layout ────────────────────────────────────────────────────────────────────
 function layoutItems(pyItems) {
@@ -289,6 +316,7 @@ function layoutItems(pyItems) {
   const itemW = 130, itemH = 56, gapX = 14, gapY = 12;
   const startX = 16, startY = 60;
   setItems(pyItems.map((it, idx) => {
+    const sizeOverride = ITEM_SIZE_OVERRIDES[it.name?.toLowerCase?.()] ?? { w: itemW, h: itemH };
     const r = Math.floor(idx / cols);
     const c = idx % cols;
     const x = startX + c * (itemW + gapX);
@@ -296,7 +324,16 @@ function layoutItems(pyItems) {
     // Match by name to get the right image
     const bankItem = ITEM_BANK.find(b => b.name === it.name) 
       ?? ITEM_BANK.find(b => b.category === it.category);
-    return { ...it, x, y, homeX: x, homeY: y, w: itemW, h: itemH, img: bankItem?.img ?? trash2Img };
+    return {
+      ...it,
+      x,
+      y,
+      homeX: x,
+      homeY: y,
+      w: sizeOverride.w,
+      h: sizeOverride.h,
+      img: bankItem?.img ?? trash2Img,
+    };
   }));
 }
 
@@ -763,7 +800,7 @@ function onTouchMove(e) {
         onMouseEnter={(e) => { if (!item.placed) e.currentTarget.style.transform = "scale(1.08)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
         style={{
-          height: "60px",
+          height: `${item.h}px`,
           borderRadius: "10px",
           background: item.placed ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.15)",
           border: "2px solid rgba(255,255,255,0.3)",
@@ -778,7 +815,7 @@ function onTouchMove(e) {
   src={item.img}
   alt={item.name}
   draggable={false}
-  style={{ height: "100%", objectFit: "contain" }}
+  style={{ width: "auto", maxWidth: "100%", height: "100%", objectFit: "contain" }}
 />
         
       </div>
