@@ -18,6 +18,8 @@ import yellowfinImg from "../../assets/sprites/river-game-sprites/yellowfin.png"
 import tunaImg from "../../assets/sprites/river-game-sprites/tuna.png";
 import red_snapperImg from "../../assets/sprites/river-game-sprites/red_snapper.png";
 import mackerelImg from "../../assets/sprites/river-game-sprites/mackerel.png";
+import goldenImg from "../../assets/sprites/river-game-sprites/goldenfish.png";
+import rainbowImg from "../../assets/sprites/river-game-sprites/rainbowfish.png";
 import livesImg from "../../assets/sprites/river-game-sprites/lives.png";
 import wavingBearImg from "../../assets/sprites/river-game-sprites/wavingbear.png";
 import settingsCogImg from "../../assets/settings_cog.png";
@@ -44,11 +46,13 @@ const A = {
   tuna: tunaImg,
   red_snapper: red_snapperImg,
   mackerel: mackerelImg,
+  golden: goldenImg,
+  rainbow: rainbowImg,
   lives: livesImg,
 };
 
 const TRASH_ASSETS = [A.trash2, A.trash3, A.trash4, A.plasticBottle, A.compostBottle, A.plasticBag, A.sodaCan];
-const FISH_ASSETS = [A.salmon, A.yellowfin, A.tuna, A.red_snapper, A.mackerel];
+const FISH_ASSETS = [A.salmon, A.yellowfin, A.tuna, A.red_snapper, A.mackerel, A.golden, A.rainbow];
 
 const CFG = {
   normal: {
