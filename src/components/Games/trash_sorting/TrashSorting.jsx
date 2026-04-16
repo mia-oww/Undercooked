@@ -20,7 +20,7 @@ import plasticBottle from "../../../assets/sprites/trash-sorting/plastic_bottle.
 import homescreenImg from "../../../assets/story_pngs/story1.3.png";
 // BINS
 import compostBinImg from "../../../assets/sprites/trash-sorting/compostbin.png";
-import recycleBinImg from "../../../assets/sprites/trash-sorting/recyclebin.png";
+import recycleBinImg from "../../../assets/sprites/trash-sorting/recyclebin.PNG";
 import landfillBinImg from "../../../assets/sprites/trash-sorting/landfillbin.png";
 import specialBinImg from "../../../assets/sprites/trash-sorting/specialbin.png";
 // COMPOST 
@@ -517,7 +517,7 @@ export default function RecycleGame() {
           .eq("user_id", session.user.id)
           .single();
         if (fetchError || !currentProfile) return;
-        const actualScore = stars * 130;
+        const actualScore = gameState?.score ?? 0;
         const newBestStars = Math.max(currentProfile.level4_stars ?? 0, stars);
         const newBestScore = Math.max(currentProfile.level4_score ?? 0, actualScore);
         const nextUnlockedLevel = Math.max(currentProfile.level ?? 0, 5);
@@ -562,12 +562,64 @@ export default function RecycleGame() {
         const stars = 1;
         setFinalStars(stars);
         saveLevelResult(4, stars);
+
+        async function saveGameOverProgress() {
+          try {
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+
+            if (!session?.user) return;
+
+            const { data: currentProfile, error: fetchError } = await supabase
+              .from("profiles")
+              .select("level4_stars, level4_score, sustain_score")
+              .eq("user_id", session.user.id)
+              .single();
+
+            if (fetchError || !currentProfile) return;
+
+            const actualScore = gameState?.score ?? 0;
+            const newBestStars = Math.max(currentProfile.level4_stars ?? 0, stars);
+            const newBestScore = Math.max(currentProfile.level4_score ?? 0, actualScore);
+            const currentSustainScore = currentProfile.sustain_score ?? 0;
+            const nextSustainScore =
+              Math.max(0, currentSustainScore - (currentProfile.level4_score ?? 0) + newBestScore);
+
+            await supabase
+              .from("profiles")
+              .update({
+                level4_stars: newBestStars,
+                level4_score: newBestScore,
+                sustain_score: nextSustainScore,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("user_id", session.user.id);
+          } catch (error) {
+            console.error("Failed to save game over progress:", error);
+          }
+        }
+
+        saveGameOverProgress();
+
         setTimeout(() => {
-          setHoneyEarned(prev => { const n = [...prev]; n[0] = true; return n; });
+          setHoneyEarned((prev) => {
+            const n = [...prev];
+            n[0] = true;
+            return n;
+          });
           setTimeout(() => {
-            setHoneyPop(prev => { const n = [...prev]; n[0] = true; return n; });
+            setHoneyPop((prev) => {
+              const n = [...prev];
+              n[0] = true;
+              return n;
+            });
             setTimeout(() => {
-              setHoneyPop(prev => { const n = [...prev]; n[0] = false; return n; });
+              setHoneyPop((prev) => {
+                const n = [...prev];
+                n[0] = false;
+                return n;
+              });
             }, 600);
           }, 20);
         }, 600);

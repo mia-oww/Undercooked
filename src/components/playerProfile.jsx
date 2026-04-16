@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "../supabase.js";
 import defaultBearImg from "../assets/profile_icons/default_bear.png";
 
 const AVATARS = [
@@ -33,10 +34,44 @@ function AvatarDisplay({ avatar, size = 34, fontSize = 20 }) {
 
 export default function PlayerProfile({ username, isGuest, onLogout, onLogin }) {
   const [open, setOpen] = useState(false);
-  const [selectedAvatar, setSelectedAvatar] = useState(
-    () => localStorage.getItem(AVATAR_STORAGE_KEY) || "bear"
-  );
+  const [selectedAvatar, setSelectedAvatar] = useState("bear");
   const [pendingAvatar, setPendingAvatar] = useState(null);
+
+  useEffect(() => {
+    async function loadAvatar() {
+      if (isGuest) {
+        const savedAvatar = localStorage.getItem(AVATAR_STORAGE_KEY) || "bear";
+        setSelectedAvatar(savedAvatar);
+        return;
+      }
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        const savedAvatar = localStorage.getItem(AVATAR_STORAGE_KEY) || "bear";
+        setSelectedAvatar(savedAvatar);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("avatar_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!error && data?.avatar_id) {
+        setSelectedAvatar(data.avatar_id);
+        localStorage.setItem(AVATAR_STORAGE_KEY, data.avatar_id);
+      } else {
+        const savedAvatar = localStorage.getItem(AVATAR_STORAGE_KEY) || "bear";
+        setSelectedAvatar(savedAvatar);
+      }
+    }
+
+    loadAvatar();
+  }, [isGuest]);
 
   const currentAvatar = AVATARS.find((a) => a.id === selectedAvatar) || AVATARS[0];
 
@@ -50,11 +85,28 @@ export default function PlayerProfile({ username, isGuest, onLogout, onLogin }) 
     setOpen(false);
   }
 
-  function handleSave() {
-    if (pendingAvatar) {
-      setSelectedAvatar(pendingAvatar);
-      localStorage.setItem(AVATAR_STORAGE_KEY, pendingAvatar);
+  async function handleSave() {
+    if (!pendingAvatar) {
+      setOpen(false);
+      return;
     }
+
+    setSelectedAvatar(pendingAvatar);
+    localStorage.setItem(AVATAR_STORAGE_KEY, pendingAvatar);
+
+    if (!isGuest) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        await supabase
+          .from("profiles")
+          .update({ avatar_id: pendingAvatar })
+          .eq("user_id", user.id);
+      }
+    }
+
     setOpen(false);
   }
 
