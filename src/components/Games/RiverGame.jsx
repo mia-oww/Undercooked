@@ -824,9 +824,9 @@ export default function RiverGame() {
   } else {
     const roll = Math.random();
     if (roll < 0.03) {
-      src = A.rainbow;           // ~8% of fish spawns
-    } else if (roll < 0.7) {
-      src = A.golden;            // ~8% of fish spawns
+      src = A.rainbow;           // ~3% of fish spawns
+    } else if (roll < 0.07) {
+      src = A.golden;            // ~7% of fish spawns
     } else {
       src = FISH_ASSETS_COMMON[Math.floor(Math.random() * FISH_ASSETS_COMMON.length)];
     }
