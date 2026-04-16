@@ -2,6 +2,36 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "./supabase";
 import homescreenImg from "./assets/homescreen.jpg";
+import defaultBearImg from "./assets/profile_icons/default_bear.png";
+
+const AVATARS = [
+  { id: "bear", img: defaultBearImg, label: "Bear" },
+  { id: "panda", emoji: "🐼", label: "Panda" },
+  { id: "fox", emoji: "🦊", label: "Fox" },
+  { id: "frog", emoji: "🐸", label: "Frog" },
+  { id: "penguin", emoji: "🐧", label: "Penguin" },
+  { id: "bunny", emoji: "🐰", label: "Bunny" },
+  { id: "duck", emoji: "🐥", label: "Duck" },
+  { id: "koala", emoji: "🐨", label: "Koala" },
+  { id: "cat", emoji: "🐱", label: "Cat" },
+  { id: "owl", emoji: "🦉", label: "Owl" },
+  { id: "hamster", emoji: "🐹", label: "Hamster" },
+  { id: "turtle", emoji: "🐢", label: "Turtle" },
+];
+
+function renderAvatar(avatarId) {
+  const avatar = AVATARS.find((a) => a.id === avatarId) || AVATARS[0];
+  if (avatar.img) {
+    return (
+      <img
+        src={avatar.img}
+        alt={avatar.label}
+        style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "contain" }}
+      />
+    );
+  }
+  return <span style={{ fontSize: 30 }}>{avatar.emoji}</span>;
+}
 
 export default function LeaderboardPage() {
   const navigate = useNavigate();
@@ -21,7 +51,7 @@ export default function LeaderboardPage() {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, display_name, sustain_score")
+        .select("user_id, display_name, sustain_score, avatar_id")
         .order("sustain_score", { ascending: false })
         .limit(50);
 
@@ -163,7 +193,10 @@ export default function LeaderboardPage() {
                 borderBottom: "1px solid rgba(0,0,0,0.1)",
               }}
             >
-              <div style={{ width: "20%" }}>#{user.rank}</div>
+              <div style={{ width: "20%", display: "flex", alignItems: "center", gap: "10px" }}>
+                <span>#{user.rank}</span>
+                {renderAvatar(user.avatar_id)}
+              </div>
 
               <div
                 style={{
