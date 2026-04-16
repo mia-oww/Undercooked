@@ -4,6 +4,7 @@ import { saveLevelResult } from "../../../utils/levelProgress";
 import Settings from "../../Settings";
 import "./styles.css";
 import { supabase } from "../../../supabase";
+import LoadingScreen from "../../../LoadingScreen"; // LOADING SCREEN IF IT TAKES FOREVER TO LOAD
 
 import backgroundImg from "../../../assets/sprites/fish-prep/background2.png";
 import deadfishImg from "../../../assets/sprites/fish-prep/deadfish.png";
@@ -80,6 +81,8 @@ export default function FishPrepGame() {
   const [knifeCutting, setKnifeCutting] = useState(false);
   const [filletVisible, setFilletVisible] = useState(false);
   const [honeyStars, setHoneyStars] = useState([false, false, false]);
+
+  const [loading, setLoading] = useState(true);
 
   const sceneRef = useRef(null);
   const stageRef = useRef("grab_fish");
@@ -545,34 +548,30 @@ export default function FishPrepGame() {
   }, [showResults]);
 
   useEffect(() => {
-    async function checkSkipIntro() {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (session?.user) {
-          const { data: profile, error } = await supabase
-            .from("profiles")
-            .select("level")
-            .eq("user_id", session.user.id)
-            .single();
-
-          if (!error && profile?.level > currentLevelId) {
-            startGame();
-            setIntroReady(true);
-            return;
-          }
+  async function checkSkipIntro() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("level")
+          .eq("user_id", session.user.id)
+          .single();
+        if (!error && profile?.level > currentLevelId) {
+          startGame();
+          setIntroReady(true);
+          setLoading(false);
+          return;
         }
-      } catch (error) {
-        console.error("Failed to check intro skip:", error);
       }
-
-      setIntroReady(true);
+    } catch (error) {
+      console.error("Failed to check intro skip:", error);
     }
-
-    checkSkipIntro();
-  }, [currentLevelId, startGame]);
+    setIntroReady(true);
+    setLoading(false);
+  }
+  checkSkipIntro();
+}, [currentLevelId, startGame]);
 
   const onFishtrayPointerDown = (e) => {
     if (stageRef.current !== "grab_fish") return;
@@ -741,6 +740,7 @@ export default function FishPrepGame() {
 
   return (
     <div className="page">
+      <LoadingScreen isLoading={loading} />
       <div id="scene" className="scene" ref={sceneRef}
         style={{ backgroundImage: `url(${backgroundImg})` }}>
 
