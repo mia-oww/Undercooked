@@ -428,6 +428,7 @@ export default function RiverGame() {
     lives: 3,
     trashCombo: 0,
     fishCount: 0,
+    fishCombo: 0,
     timeLeft: 60,
     mode: "trash",
     gameRunning: false,
@@ -629,6 +630,14 @@ export default function RiverGame() {
     if (comboDisplayRef.current) {
       comboDisplayRef.current.textContent =
         trashCombo >= 3 ? `🔥 x${trashCombo}` : trashCombo > 0 ? `✨ x${trashCombo}` : "—";
+    }
+  }, []);
+
+  const updateFishCombo = useCallback(() => {
+    const { fishCombo } = stateRef.current;
+    if (comboDisplayRef.current) {
+      comboDisplayRef.current.textContent =
+        fishCombo >= 3 ? `🔥 x${fishCombo}` : fishCombo > 0 ? `✨ x${fishCombo}` : "—";
     }
   }, []);
 
@@ -898,7 +907,19 @@ export default function RiverGame() {
             );
           } else {
             stateRef.current.fishCount++;
+            stateRef.current.fishCombo++;
             stateRef.current.trashCombo = 0;
+            const pts = 10 * (stateRef.current.fishCombo >= 3 ? 2 : 1);
+            stateRef.current.score += pts;
+            updateScore(pts);
+            updateFishCombo();
+            popupImg(
+              src,
+              stateRef.current.fishCombo >= 3 ? `+${pts} 🔥` : `+${pts}`,
+              "#f39c12",
+              CATCH_X,
+              catcherY - 40
+            );
             if (type === 'salmonImg') {
               stateRef.current.score += 10;
               updateScore(10);
