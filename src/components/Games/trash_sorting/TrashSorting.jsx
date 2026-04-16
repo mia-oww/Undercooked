@@ -26,6 +26,8 @@ import bonefishImg from "../../../assets/sprites/fish-prep/fishbone2.png";
 import fishtailImg from "../../../assets/sprites/fish-prep/fishtail.png";
 import bananaImg from "../../../assets/sprites/trash-sorting/banana_compost.png"; 
 import appleImg from "../../../assets/sprites/trash-sorting/apple_compost.png";
+// landfill:
+import batteryImg from "../../../assets/sprites/trash-sorting/battery.png";
 
 import livesImg from "../../../assets/sprites/river-game-sprites/lives.png";
 import settingsCogImg from "../../../assets/settings_cog.png";
@@ -38,13 +40,14 @@ const ITEM_IMAGES = {
   "Fish tail": fishtailImg,
   "Shrink Wrap ":  trash3Img,
   "Mask": trash4Img,
-  "SPECIAL":  trashcanImg,
+  "Battery": batteryImg,
+  "SPECIAL":  batteryImg,
 };
 const CATEGORY_IMAGE_POOLS = {
   COMPOST: [bananaImg, appleImg, fishtailImg],   // add more compost images here
   RECYCLE: [trash3Img, trash2Img],                         // add more recycle images here
-  LANDFILL: [trash4Img],                        // add more landfill images here
-  SPECIAL: [trashcanImg],                       // add more special images here
+  LANDFILL: [trash4Img, batteryImg],                        // add more landfill images here
+  SPECIAL: [batteryImg],                       // add more special images here
 };
 const BIN_IMAGES = {
     COMPOST: compostBinImg,
@@ -59,12 +62,12 @@ const ITEM_BANK = [
   { name: "Apple", category: "COMPOST", img: appleImg, why: "Apple cores are organic food waste perfect for composting.", whyNot: "This is organic food waste, it doesn't belong here." },
   { name: "Fish tail", category: "COMPOST", img: fishtailImg, why: "Fish tails are organic and can be composted.", whyNot: "This is organic food waste it doesn't belong here." },
   // RECYCLE
-  { name: "Aluminum Can", category: "RECYCLE", img: trash3Img, why: "Aluminum cans are recyclable!", whyNot: "This is recyclable metal, it doesn't belong here." },
+  { name: "Aluminum Can", category: "RECYCLE", img: trash2Img, why: "Aluminum cans are recyclable!", whyNot: "This is recyclable metal, it doesn't belong here." },
   { name: "Shrink Wrap", category: "RECYCLE", img: trash3Img, why: "Shrink wrap is recyclable.", whyNot: "This is recyclable plastic, it doesn't belong here." },
   // LANDFILL
   { name: "Mask", category: "LANDFILL", img: trash4Img, why: "Masks are non-recyclable and should be disposed of in the landfill.", whyNot: "This is non-recyclable plastic — it doesn't belong here." },
   // SPECIAL
-  { name: "Battery", category: "SPECIAL", img: trashcanImg, why: "Batteries need special disposal to prevent chemical leaks.", whyNot: "This is hazardous — it doesn't belong here." },
+  { name: "Battery", category: "SPECIAL", img: batteryImg, why: "Batteries need special disposal to prevent chemical leaks.", whyNot: "This is hazardous — it doesn't belong here." },
 ];
 
 
