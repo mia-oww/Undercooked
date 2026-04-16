@@ -63,7 +63,8 @@ const CFG = {
 
 const TRASH_SZ_MIN = 42;
 const TRASH_SZ_MAX = 88;
-const FISH_SZ = 60;
+const FISH_SZ_MIN = 52;
+const FISH_SZ_MAX = 74;
 const ITEM_MIN_Y_SEP = 70;
 const MIN_ARRIVAL_GAP_MS = 900;
 const CATCHER_HALF = 36;
@@ -812,7 +813,9 @@ export default function RiverGame() {
       const hi = Math.min(TRASH_SZ_MAX, riverCap);
       sz = Math.round(lo + Math.pow(Math.random(), 0.8) * (hi - lo));
     } else {
-      sz = Math.min(FISH_SZ, riverCap);
+      const fishLo = Math.min(FISH_SZ_MIN, riverCap);
+      const fishHi = Math.min(FISH_SZ_MAX, riverCap);
+      sz = Math.round(fishLo + Math.random() * (fishHi - fishLo));
     }
 
     const dur = s.itemSpeed + Math.random() * 2500;
