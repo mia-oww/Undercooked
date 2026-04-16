@@ -844,23 +844,26 @@ function onTouchMove(e) {
       {draggingId && (() => {
         const item = items.find(it => it.id === draggingId);
         if (!item) return null;
-        const rgb = BIN_RGB[item.category];
         return (
           <div style={{
             position: "fixed",
-            left: ghostPos.x - 50,
-            top: ghostPos.y - 26,
-            width: "100px", height: "52px",
-            background: rgb,
-            border: "2px solid #eee",
-            borderRadius: "12px",
+            left: ghostPos.x - item.w / 2,
+            top: ghostPos.y - item.h / 2,
+            width: `${item.w}px`,
+            height: `${item.h}px`,
+            borderRadius: "14px",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontWeight: "bold", fontSize: "15px", color: "#fff",
-            boxShadow: "0 10px 28px rgba(0,0,0,0.5)",
+            boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
             pointerEvents: "none", zIndex: 9999,
-            transform: "scale(1.08)",
+            transform: "scale(1.05)",
+            background: "rgba(255,255,255,0.06)",
           }}>
-            {item.category[0]}
+            <img
+              src={item.img}
+              alt={item.name}
+              draggable={false}
+              style={{ width: "100%", height: "100%", objectFit: "contain", pointerEvents: "none" }}
+            />
           </div>
         );
       })()}
