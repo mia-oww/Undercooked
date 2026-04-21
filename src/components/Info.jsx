@@ -10,7 +10,7 @@ export default function Game() {
   const content = useMemo(
     () => ({
       about:
-        "Sustainabear is a series of mini-games where players work to restore the environment while learning about sustainability in a simplified way ",
+        "Sustainabear is a series of mini-games where players work to restore the environment while learning about sustainability in a simplified way. ",
       team: "This game is presented to you by the Undercooked Team consisting of Mia, Sia, Rena, Nashita, Sid, Godric, and Ryan.\n\n ~View our code here~ \n https://github.com/mia-oww/Undercooked",
     }),
     []
@@ -109,19 +109,17 @@ export default function Game() {
               overflow: "hidden",
             }}
           >
-            : (
-              <div
-                style={{
-                  fontSize: "22px",
-                  lineHeight: "1.65",
-                  whiteSpace: "pre-line",
-                  color: "rgba(0,0,0,0.9)",
-                  textShadow: "0 1px 0 rgba(255,255,255,0.35)",
-                }}
-              >
-                {content[tab]}
-              </div>
-            )}
+            <div
+              style={{
+                fontSize: "22px",
+                lineHeight: "1.65",
+                whiteSpace: "pre-line",
+                color: "rgba(0,0,0,0.9)",
+                textShadow: "0 1px 0 rgba(255,255,255,0.35)",
+              }}
+            >
+              {content[tab]}
+            </div>
           </div>
         </div>
       </div>
