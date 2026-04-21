@@ -23,7 +23,7 @@ import wavingBearImg from "../../../assets/sprites/river-game-sprites/wavingbear
 import sliceSound from "../../../assets/sprites/fish-prep/slice.mp3";
 
 // speed fish sprites
-import redSnapperImg from "../../../assets/sprites/fish-prep/red snapper.png";
+import redSnapperImg from "../../../assets/sprites/fish-prep/red_snapper.png";
 import mackerelImg from "../../../assets/sprites/fish-prep/Mackerel.png";
 import yellowfinImg from "../../../assets/sprites/fish-prep/Yellowfin.png";
 import tunaImg from "../../../assets/sprites/fish-prep/Tuna.png";
