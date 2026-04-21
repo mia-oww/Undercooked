@@ -4,10 +4,6 @@ import Settings from "../../Settings";
 import { saveLevelResult } from "../../../utils/levelProgress";
 import { supabase } from "../../../supabase";
 
-/**
- * Falling pieces (left → right on tray): Rice, Middle, Roe.
- * Completed sets add sushi_salmon.png to the left tally strip.
- */
 import bgImg from "../../../assets/sprites/stacking_background.png";
 import riceImg from "../../../assets/sprites/stacking_rice.png";
 import middleImg from "../../../assets/sprites/stacking_middle.png";
@@ -31,46 +27,34 @@ const CONFIG = {
   speed_increase_percent: 10,
   max_blocks_without_color: 4,
   max_consecutive_same: 2,
-  /** Width (px) of the left “completed sushi” tally column. */
   left_tally_width_px: 124,
   soft_drop_multiplier: 12,
   tray_smooth_speed: 22,
   min_spawn_gap: 0.55,
   max_spawn_gap_extra: 0.85,
   sprite_scale: 1.12,
-  /**
-   * Vertical spacing between stacked pieces, as a fraction of one cell (smaller = tighter).
-   */
   stack_row_pitch: 0.56,
-  /** If true, new pieces never spawn in the tray’s current 3 columns (must move to catch). */
   spawn_avoid_tray_columns: true,
-  /** Per-art multipliers on top of `sprite_scale` (5963 rice, 5966 middle, 5968 roe). */
   rice_sprite_scale: 1.2,
   middle_sprite_scale: 1.2,
   roe_sprite_scale: 4,
-  /** Fraction of roe (5968) image height cropped from the bottom when drawing (tighter stack vs rice/middle). */
   roe_crop_bottom_fraction: 0.26,
-  /** Global sine variation on fall speed (kept small so pieces stay catchable). */
   fall_speed_osc_amp: 0.085,
   fall_speed_osc_hz: 0.32,
   fall_speed_global_clamp_min: 0.93,
   fall_speed_global_clamp_max: 1.07,
-  /** Per-piece multiplier range at spawn (subtle variance). */
   piece_fall_mul_min: 0.84,
   piece_fall_mul_max: 1.08,
 };
 
 const PIECE_KEYS = ["Rice", "Middle", "Roe"];
-
 const SLOT_BY_KEY = { Rice: 0, Middle: 1, Roe: 2 };
-
 const SPRITES = {
   Rice: riceImg,
   Middle: middleImg,
   Roe: roeImg,
   CompletedSushi: completedSushiImg,
 };
-
 const BG_COLOR = "#14191e";
 
 function pieceScaleMul(spriteKey) {
@@ -80,14 +64,9 @@ function pieceScaleMul(spriteKey) {
   return 1;
 }
 
-/** Draw piece bitmap; roe uses a bottom crop on the source so stacks align better with rice/middle. */
 function drawPieceSprite(ctx, img, px, py, sz, spriteKey) {
   if (!img?.naturalWidth) return;
-  if (
-    spriteKey === "Roe" &&
-    CONFIG.roe_crop_bottom_fraction > 0 &&
-    img.naturalHeight
-  ) {
+  if (spriteKey === "Roe" && CONFIG.roe_crop_bottom_fraction > 0 && img.naturalHeight) {
     const crop = Math.min(0.45, CONFIG.roe_crop_bottom_fraction);
     const nw = img.naturalWidth;
     const nh = img.naturalHeight;
@@ -107,9 +86,7 @@ function randomInt(maxExclusive) {
 }
 
 function randomSpawnGap() {
-  return (
-    CONFIG.min_spawn_gap + Math.random() * CONFIG.max_spawn_gap_extra
-  );
+  return CONFIG.min_spawn_gap + Math.random() * CONFIG.max_spawn_gap_extra;
 }
 
 class GameState {
@@ -128,7 +105,6 @@ class GameState {
     this.multiplier = 0;
     this.total_locks = 0;
     this.total_clears = 0;
-    /** Completed sushi sets (each clear adds one salmon icon on the left tally). */
     this.completed_sushi = 0;
     this.drop_interval = CONFIG.initial_drop_interval;
     this.game_over = false;
@@ -155,9 +131,7 @@ class GameState {
     const cols = this._base_columns();
     const x = piece.x;
     const pitch = CONFIG.stack_row_pitch;
-    if (!cols.includes(x)) {
-      return H - 1;
-    }
+    if (!cols.includes(x)) return H - 1;
     const col_idx = x - this.base_x;
     const len = this.stack_slots[col_idx].length;
     return H - 2 - len * pitch;
@@ -167,10 +141,6 @@ class GameState {
     return 1 / this.drop_interval;
   }
 
-  /**
-   * Every 5 consecutive spawns must include Rice, Middle, and Roe at least once.
-   * Uses last 4 categories to constrain the next pick so the rolling window always satisfies that.
-   */
   _fiveWindowAllowedCategories() {
     const last4 = this.spawn_color_history.slice(-4);
     let allowed = [...PIECE_KEYS];
@@ -186,9 +156,6 @@ class GameState {
     return allowed;
   }
 
-  /**
-   * No more than 2 identical drops in a row (same piece: Rice, Middle, Roe).
-   */
   _applyStreakSpriteConstraint(allowedCategories) {
     const lt = this.spawn_sprite_history.slice(-2);
     if (lt.length < 2 || lt[0] !== lt[1]) return allowedCategories;
@@ -203,13 +170,9 @@ class GameState {
     const recent = windowSize ? this.spawn_color_history.slice(-windowSize) : [];
     const lastN = maxStreak ? this.spawn_color_history.slice(-maxStreak) : [];
     const varietyMissing = new Set(PIECE_KEYS);
-    recent.forEach((c) => {
-      if (PIECE_KEYS.includes(c)) varietyMissing.delete(c);
-    });
+    recent.forEach((c) => { if (PIECE_KEYS.includes(c)) varietyMissing.delete(c); });
     let streakColor = null;
-    if (lastN.length === maxStreak && new Set(lastN).size === 1) {
-      streakColor = lastN[0];
-    }
+    if (lastN.length === maxStreak && new Set(lastN).size === 1) streakColor = lastN[0];
 
     let allowed = this._fiveWindowAllowedCategories();
     allowed = this._applyStreakSpriteConstraint(allowed);
@@ -222,18 +185,11 @@ class GameState {
       return use[randomInt(use.length)];
     };
 
-    if (allowed.length === 0) {
-      allowed = this._fiveWindowAllowedCategories();
-    }
-
+    if (allowed.length === 0) allowed = this._fiveWindowAllowedCategories();
     let category = pickFromPool(allowed);
 
     const lt = this.spawn_sprite_history.slice(-2);
-    if (
-      lt.length === 2 &&
-      lt[0] === lt[1] &&
-      lt[1] === category
-    ) {
+    if (lt.length === 2 && lt[0] === lt[1] && lt[1] === category) {
       const pool = PIECE_KEYS.filter((c) => c !== category);
       category = pool[randomInt(pool.length)];
     }
@@ -249,20 +205,14 @@ class GameState {
 
   _globalFallSpeedMul() {
     const t = this.elapsed;
-    const w =
-      CONFIG.fall_speed_osc_amp *
-      Math.sin(t * CONFIG.fall_speed_osc_hz * Math.PI * 2);
+    const w = CONFIG.fall_speed_osc_amp * Math.sin(t * CONFIG.fall_speed_osc_hz * Math.PI * 2);
     const m = 1 + w;
-    return Math.max(
-      CONFIG.fall_speed_global_clamp_min,
-      Math.min(CONFIG.fall_speed_global_clamp_max, m)
-    );
+    return Math.max(CONFIG.fall_speed_global_clamp_min, Math.min(CONFIG.fall_speed_global_clamp_max, m));
   }
 
   _spawn_piece() {
     const H = CONFIG.HEIGHT;
     if (this.stack_slots.some((slot) => slot.length >= H - 1)) return null;
-
     const { category, sprite_key } = this._pickCategoryAndSprite();
     const slot = SLOT_BY_KEY[sprite_key];
     this.spawn_color_history.push(category);
@@ -270,7 +220,6 @@ class GameState {
     return {
       id: nextPieceId++,
       slot,
-      /** Fixed grid column at spawn (random; never on tray when avoid-tray is enabled). */
       x: this._spawnColumnForSprite(sprite_key),
       y: 0,
       sprite_key,
@@ -288,13 +237,6 @@ class GameState {
     return Array.from({ length: CONFIG.BASE_WIDTH }, (_, i) => this.base_x + i);
   }
 
-  /**
-   * Spawn column rules (x = 0 is left, W-1 is right):
-   * - Col 0: rice only (no middle “fish” or roe)
-   * - Col 1: no roe
-   * - Col W-1: roe only (no rice or middle)
-   * - Col W-2: no rice
-   */
   _columnAllowedForSprite(spriteKey, x) {
     const W = CONFIG.WIDTH;
     if (x === 0) return spriteKey === "Rice";
@@ -304,7 +246,6 @@ class GameState {
     return true;
   }
 
-  /** Picks a random valid column for this piece type, intersecting tray-avoid when enabled. */
   _spawnColumnForSprite(sprite_key) {
     const W = CONFIG.WIDTH;
     const trayCols = this._base_columns();
@@ -326,11 +267,9 @@ class GameState {
 
   update(dt, soft_drop) {
     if (this.game_over) return;
-
     this.elapsed += dt;
     const trayK = Math.min(1, CONFIG.tray_smooth_speed * dt);
     this.base_x_smooth += (this.base_x - this.base_x_smooth) * trayK;
-
     this.spawn_timer -= dt;
     let spawnedThisFrame = false;
     if (this.spawn_timer <= 0 && this.falling.length < this.spawnCap) {
@@ -344,38 +283,25 @@ class GameState {
 
     const globalMul = this._globalFallSpeedMul();
     const baseSpeed = this._cellsPerSecond() * dt * globalMul;
-    const sortedByDepth = [...this.falling].sort(
-      (a, b) => b.y - a.y || a.id - b.id
-    );
+    const sortedByDepth = [...this.falling].sort((a, b) => b.y - a.y || a.id - b.id);
     const bottomPieceId = sortedByDepth[0]?.id ?? null;
-
     const sorted = [...this.falling].sort((a, b) => b.y - a.y);
     const toLock = [];
 
     for (const piece of sorted) {
       const pm = piece.fallMul ?? 1;
-      const softMul =
-        soft_drop &&
-        bottomPieceId !== null &&
-        piece.id === bottomPieceId
-          ? CONFIG.soft_drop_multiplier
-          : 1;
+      const softMul = soft_drop && bottomPieceId !== null && piece.id === bottomPieceId
+        ? CONFIG.soft_drop_multiplier : 1;
       const dy = baseSpeed * pm * softMul;
       let nextY = piece.y + dy;
       const maxY = this._maxYForPiece(piece);
       let hitLimit = false;
-      if (nextY > maxY) {
-        nextY = maxY;
-        hitLimit = true;
-      }
+      if (nextY > maxY) { nextY = maxY; hitLimit = true; }
       for (const other of this.falling) {
         if (other.id === piece.id || other.x !== piece.x) continue;
         if (other.y <= piece.y) continue;
         const cap = other.y - 1;
-        if (nextY > cap) {
-          nextY = cap;
-          hitLimit = true;
-        }
+        if (nextY > cap) { nextY = cap; hitLimit = true; }
       }
       piece.y = nextY;
       if (hitLimit) toLock.push(piece);
@@ -389,11 +315,7 @@ class GameState {
       this._lock_piece(piece);
     }
 
-    if (
-      !this.game_over &&
-      this.falling.length === 0 &&
-      !spawnedThisFrame
-    ) {
+    if (!this.game_over && this.falling.length === 0 && !spawnedThisFrame) {
       this.spawnCap = 1;
       const p = this._spawn_piece();
       if (p) {
@@ -406,12 +328,10 @@ class GameState {
   }
 
   _lock_piece(piece) {
-    const H = CONFIG.HEIGHT;
     const cols = this._base_columns();
     const idx = this.falling.findIndex((p) => p.id === piece.id);
     if (idx === -1) return;
     this.falling.splice(idx, 1);
-
     const { sprite_key: color } = piece;
     const col = piece.x;
     const in_tray = cols.includes(col);
@@ -423,10 +343,7 @@ class GameState {
       if (col_idx !== piece.slot) {
         this.multiplier = 0;
       } else {
-        this.multiplier = Math.min(
-          CONFIG.max_multiplier,
-          this.multiplier + CONFIG.multiplier_increment
-        );
+        this.multiplier = Math.min(CONFIG.max_multiplier, this.multiplier + CONFIG.multiplier_increment);
       }
     }
     this.total_locks += 1;
@@ -444,27 +361,14 @@ class GameState {
       const min_len = Math.min(...this.stack_slots.map((s) => s.length));
       if (min_len <= 0) break;
       for (let i = min_len - 1; i >= 0; i -= 1) {
-        const row = [
-          this.stack_slots[0][i],
-          this.stack_slots[1][i],
-          this.stack_slots[2][i],
-        ];
-        if (
-          row[0] === "Rice" &&
-          row[1] === "Middle" &&
-          row[2] === "Roe"
-        ) {
-          this.stack_slots.forEach((slot) => {
-            slot.splice(i, 1);
-          });
+        const row = [this.stack_slots[0][i], this.stack_slots[1][i], this.stack_slots[2][i]];
+        if (row[0] === "Rice" && row[1] === "Middle" && row[2] === "Roe") {
+          this.stack_slots.forEach((slot) => { slot.splice(i, 1); });
           this.score += Math.floor(base_pts * (1 + this.multiplier));
           this.total_clears += 1;
           this.completed_sushi += 1;
           if (this.total_clears % n === 0) {
-            this.drop_interval = Math.max(
-              CONFIG.min_drop_interval,
-              this.drop_interval / (1 + pct)
-            );
+            this.drop_interval = Math.max(CONFIG.min_drop_interval, this.drop_interval / (1 + pct));
           }
           cleared_any = true;
           break;
@@ -481,6 +385,43 @@ function calcStars(totalClears, score) {
   return 0;
 }
 
+// ─── Glass HUD styles (injected once) ────────────────────────────────────────
+const HUD_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800&display=swap');
+
+  #sg-hud {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 20;
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px; pointer-events: none;
+  }
+  .sg-hud-block {
+    display: flex; flex-direction: column; align-items: center; min-width: 58px;
+    background: rgba(255,255,255,0.22);
+    backdrop-filter: blur(14px) saturate(1.6);
+    -webkit-backdrop-filter: blur(14px) saturate(1.6);
+    border: 1px solid rgba(255,255,255,0.45); border-radius: 18px;
+    padding: 5px 18px 6px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5);
+  }
+  .sg-hud-label {
+    font-size: 0.5rem; letter-spacing: 1.5px; text-transform: uppercase;
+    color: rgba(255,255,255,0.75); font-weight: 800;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.35); white-space: nowrap;
+    font-family: 'Nunito', sans-serif;
+  }
+  .sg-hud-val {
+    font-family: 'Fredoka One', cursive; font-size: 1.4rem; line-height: 1.1;
+    color: #fff; transition: color 0.3s; text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+  .sg-hud-val.warn { color: #ffcc55; }
+  .sg-hud-val.good { color: #5effa0; }
+
+  @keyframes sgFadeSlideUp {
+    from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+`;
+
 export default function StackingGame() {
   const navigate = useNavigate();
   const canvasRef = useRef(null);
@@ -495,12 +436,7 @@ export default function StackingGame() {
   const lastTsRef = useRef(0);
   const endedRef = useRef(false);
 
-  const [hud, setHud] = useState({
-    score: 0,
-    mult: 0,
-    speed: 1.5,
-    gameOver: false,
-  });
+  const [hud, setHud] = useState({ score: 0, mult: 0, speed: 1.5, clears: 0, gameOver: false });
   const [assetsReady, setAssetsReady] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showEnd, setShowEnd] = useState(false);
@@ -518,89 +454,69 @@ export default function StackingGame() {
   const loadImages = useCallback(() => {
     const entries = Object.entries(SPRITES);
     return Promise.all(
-      entries.map(
-        ([key, src]) =>
-          new Promise((resolve) => {
-            const im = new Image();
-            im.onload = () => resolve([key, im]);
-            im.onerror = () => resolve([key, null]);
-            im.src = src;
-          })
+      entries.map(([key, src]) =>
+        new Promise((resolve) => {
+          const im = new Image();
+          im.onload = () => resolve([key, im]);
+          im.onerror = () => resolve([key, null]);
+          im.src = src;
+        })
       )
     ).then((pairs) => {
       const map = {};
-      pairs.forEach(([k, v]) => {
-        map[k] = v;
-      });
+      pairs.forEach(([k, v]) => { map[k] = v; });
       map.__bg = new Image();
       return new Promise((resolve) => {
-        map.__bg.onload = () => {
-          imagesRef.current = map;
-          resolve();
-        };
-        map.__bg.onerror = () => {
-          imagesRef.current = map;
-          resolve();
-        };
+        map.__bg.onload = () => { imagesRef.current = map; resolve(); };
+        map.__bg.onerror = () => { imagesRef.current = map; resolve(); };
         map.__bg.src = bgImg;
       });
     });
   }, []);
 
-  const drawPlayfieldOverlay = useCallback(
-    (ctx, offX) => {
-      const pad = 6;
-      ctx.save();
-      ctx.fillStyle = "rgba(8, 14, 22, 0.42)";
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.38)";
-      ctx.lineWidth = 3;
-      const r = 14;
-      const x0 = offX + pad;
-      const y0 = pad;
-      const rw = PLAYFIELD_W - pad * 2;
-      const rh = CANVAS_H - pad * 2;
-      ctx.beginPath();
-      if (typeof ctx.roundRect === "function") {
-        ctx.roundRect(x0, y0, rw, rh, r);
-      } else {
-        ctx.rect(x0, y0, rw, rh);
-      }
-      ctx.fill();
-      ctx.stroke();
+  const drawPlayfieldOverlay = useCallback((ctx, offX) => {
+    const pad = 6;
+    ctx.save();
+    ctx.fillStyle = "rgba(8, 14, 22, 0.42)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.38)";
+    ctx.lineWidth = 3;
+    const r = 14;
+    const x0 = offX + pad;
+    const y0 = pad;
+    const rw = PLAYFIELD_W - pad * 2;
+    const rh = CANVAS_H - pad * 2;
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") {
+      ctx.roundRect(x0, y0, rw, rh, r);
+    } else {
+      ctx.rect(x0, y0, rw, rh);
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255, 248, 220, 0.06)";
+    ctx.fillRect(x0, (H - 1) * CELL, rw, CELL);
+    ctx.restore();
+  }, [CANVAS_H, PLAYFIELD_W, H, CELL]);
 
-      ctx.fillStyle = "rgba(255, 248, 220, 0.06)";
-      ctx.fillRect(x0, (H - 1) * CELL, rw, CELL);
-      ctx.restore();
-    },
-    [CANVAS_H, PLAYFIELD_W, H, CELL]
-  );
+  const drawStackedSprite = useCallback((ctx, img, offX, gridCol, row_idx, spriteKey) => {
+    if (!img) return;
+    const mul = pieceScaleMul(spriteKey);
+    const sz = CELL * sc * mul;
+    const px = offX + gridCol * CELL + (CELL - sz) / 2;
+    const pitch = CONFIG.stack_row_pitch;
+    const gridRowVisual = (H - 2) - row_idx * pitch;
+    const py = gridRowVisual * CELL + (CELL - sz) / 2;
+    drawPieceSprite(ctx, img, px, py, sz, spriteKey);
+  }, [CELL, sc, H]);
 
-  /** Stacked pieces use tighter vertical pitch than one full cell (less empty gap). */
-  const drawStackedSprite = useCallback(
-    (ctx, img, offX, gridCol, row_idx, spriteKey) => {
-      if (!img) return;
-      const mul = pieceScaleMul(spriteKey);
-      const sz = CELL * sc * mul;
-      const px = offX + gridCol * CELL + (CELL - sz) / 2;
-      const pitch = CONFIG.stack_row_pitch;
-      const gridRowVisual = (H - 2) - row_idx * pitch;
-      const py = gridRowVisual * CELL + (CELL - sz) / 2;
-      drawPieceSprite(ctx, img, px, py, sz, spriteKey);
-    },
-    [CELL, sc, H]
-  );
-
-  const drawFallingSprite = useCallback(
-    (ctx, img, offX, gridColFloat, gridRowFloat, spriteKey) => {
-      if (!img) return;
-      const mul = pieceScaleMul(spriteKey);
-      const sz = CELL * sc * mul;
-      const px = offX + gridColFloat * CELL + (CELL - sz) / 2;
-      const py = gridRowFloat * CELL + (CELL - sz) / 2;
-      drawPieceSprite(ctx, img, px, py, sz, spriteKey);
-    },
-    [CELL, sc]
-  );
+  const drawFallingSprite = useCallback((ctx, img, offX, gridColFloat, gridRowFloat, spriteKey) => {
+    if (!img) return;
+    const mul = pieceScaleMul(spriteKey);
+    const sz = CELL * sc * mul;
+    const px = offX + gridColFloat * CELL + (CELL - sz) / 2;
+    const py = gridRowFloat * CELL + (CELL - sz) / 2;
+    drawPieceSprite(ctx, img, px, py, sz, spriteKey);
+  }, [CELL, sc]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -670,75 +586,38 @@ export default function StackingGame() {
     }
 
     for (const piece of g.falling) {
-      drawFallingSprite(
-        ctx,
-        imgs[piece.sprite_key],
-        OFF,
-        piece.x,
-        piece.y,
-        piece.sprite_key
-      );
+      drawFallingSprite(ctx, imgs[piece.sprite_key], OFF, piece.x, piece.y, piece.sprite_key);
     }
-  }, [
-    CANVAS_H,
-    FULL_W,
-    PLAYFIELD_W,
-    LEFT_PANEL_W,
-    H,
-    CELL,
-    drawPlayfieldOverlay,
-    drawStackedSprite,
-    drawFallingSprite,
-  ]);
+  }, [CANVAS_H, FULL_W, PLAYFIELD_W, LEFT_PANEL_W, H, CELL, drawPlayfieldOverlay, drawStackedSprite, drawFallingSprite]);
 
   const handleInput = useCallback((dt) => {
     const g = gameRef.current;
     const k = keysRef.current;
     const moveSpeed = 14;
     if (k.left) {
-      if (!leftInitialRef.current) {
-        g.move_base(-1);
-        leftInitialRef.current = true;
-      } else {
+      if (!leftInitialRef.current) { g.move_base(-1); leftInitialRef.current = true; }
+      else {
         leftHoldRef.current += dt;
-        if (leftHoldRef.current >= 0.12) {
-          g.move_base(-1);
-          leftHoldRef.current -= 1 / moveSpeed;
-        }
+        if (leftHoldRef.current >= 0.12) { g.move_base(-1); leftHoldRef.current -= 1 / moveSpeed; }
       }
-    } else {
-      leftHoldRef.current = 0;
-      leftInitialRef.current = false;
-    }
+    } else { leftHoldRef.current = 0; leftInitialRef.current = false; }
     if (k.right) {
-      if (!rightInitialRef.current) {
-        g.move_base(1);
-        rightInitialRef.current = true;
-      } else {
+      if (!rightInitialRef.current) { g.move_base(1); rightInitialRef.current = true; }
+      else {
         rightHoldRef.current += dt;
-        if (rightHoldRef.current >= 0.12) {
-          g.move_base(1);
-          rightHoldRef.current -= 1 / moveSpeed;
-        }
+        if (rightHoldRef.current >= 0.12) { g.move_base(1); rightHoldRef.current -= 1 / moveSpeed; }
       }
-    } else {
-      rightHoldRef.current = 0;
-      rightInitialRef.current = false;
-    }
+    } else { rightHoldRef.current = 0; rightInitialRef.current = false; }
   }, []);
 
   const persistProgress = useCallback(async (stars, score) => {
     saveLevelResult(CURRENT_LEVEL_ID, stars);
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
       const { data: currentProfile, error: fetchError } = await supabase
         .from("profiles")
-        .select(
-          "level, level1_stars, level2_stars, level3_stars, level4_stars, level1_score, level2_score, level3_score, level4_score, sustain_score"
-        )
+        .select("level, level1_stars, level2_stars, level3_stars, level4_stars, level1_score, level2_score, level3_score, level4_score, sustain_score")
         .eq("user_id", session.user.id)
         .single();
       if (fetchError || !currentProfile) return;
@@ -746,95 +625,62 @@ export default function StackingGame() {
       const newBestScore = Math.max(currentProfile.level3_score ?? 0, score);
       const nextUnlockedLevel = Math.max(currentProfile.level ?? 0, CURRENT_LEVEL_ID + 1);
       const currentSustainScore = currentProfile.sustain_score ?? 0;
-      const nextSustainScore = Math.max(
-        0,
-        currentSustainScore - (currentProfile.level3_score ?? 0) + newBestScore
-      );
-      await supabase
-        .from("profiles")
-        .update({
-          level3_stars: newBestStars,
-          level3_score: newBestScore,
-          level: nextUnlockedLevel,
-          sustain_score: nextSustainScore,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", session.user.id);
+      const nextSustainScore = Math.max(0, currentSustainScore - (currentProfile.level3_score ?? 0) + newBestScore);
+      await supabase.from("profiles").update({
+        level3_stars: newBestStars,
+        level3_score: newBestScore,
+        level: nextUnlockedLevel,
+        sustain_score: nextSustainScore,
+        updated_at: new Date().toISOString(),
+      }).eq("user_id", session.user.id);
     } catch (e) {
       console.error("Failed to save stacking game progress:", e);
     }
   }, []);
 
-  const tick = useCallback(
-    (ts) => {
-      if (!lastTsRef.current) lastTsRef.current = ts;
-      const rawDelta = ts - lastTsRef.current;
-      lastTsRef.current = ts;
-      const dt = Math.min(rawDelta / 1000, 0.1);
-
-      const g = gameRef.current;
-      if (!g.game_over) {
-        handleInput(dt);
-        g.update(dt, keysRef.current.down);
-      }
-
-      const nextSpeed =
-        g.drop_interval > 0
-          ? Math.round((1 / g.drop_interval) * 100) / 100
-          : 0;
-      setHud((prev) => {
-        const next = {
-          score: g.score,
-          mult: g.multiplier,
-          speed: nextSpeed,
-          gameOver: g.game_over,
-        };
-        if (
-          prev.score === next.score &&
-          prev.mult === next.mult &&
-          prev.speed === next.speed &&
-          prev.gameOver === next.gameOver
-        ) {
-          return prev;
-        }
-        return next;
-      });
-
-      if (g.game_over && !endedRef.current) {
-        endedRef.current = true;
-        const stars = calcStars(g.total_clears, g.score);
-        setFinalStars(stars);
-        setShowEnd(true);
-        persistProgress(stars, g.score);
-      }
-
-      draw();
-      rafRef.current = requestAnimationFrame(tick);
-    },
-    [draw, handleInput, persistProgress]
-  );
+  const tick = useCallback((ts) => {
+    if (!lastTsRef.current) lastTsRef.current = ts;
+    const rawDelta = ts - lastTsRef.current;
+    lastTsRef.current = ts;
+    const dt = Math.min(rawDelta / 1000, 0.1);
+    const g = gameRef.current;
+    if (!g.game_over) {
+      handleInput(dt);
+      g.update(dt, keysRef.current.down);
+    }
+    const nextSpeed = g.drop_interval > 0 ? Math.round((1 / g.drop_interval) * 100) / 100 : 0;
+    setHud((prev) => {
+      const next = { score: g.score, mult: g.multiplier, speed: nextSpeed, clears: g.total_clears, gameOver: g.game_over };
+      if (prev.score === next.score && prev.mult === next.mult && prev.speed === next.speed && prev.clears === next.clears && prev.gameOver === next.gameOver) return prev;
+      return next;
+    });
+    if (g.game_over && !endedRef.current) {
+      endedRef.current = true;
+      const stars = calcStars(g.total_clears, g.score);
+      setFinalStars(stars);
+      setShowEnd(true);
+      persistProgress(stars, g.score);
+    }
+    draw();
+    rafRef.current = requestAnimationFrame(tick);
+  }, [draw, handleInput, persistProgress]);
 
   useEffect(() => {
     let cancelled = false;
-    loadImages()
-      .then(() => {
-        if (!cancelled) {
-          setAssetsReady(true);
-          lastTsRef.current = 0;
-          rafRef.current = requestAnimationFrame(tick);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setAssetsReady(true);
-          lastTsRef.current = 0;
-          rafRef.current = requestAnimationFrame(tick);
-        }
-      });
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(rafRef.current);
-    };
+    loadImages().then(() => {
+      if (!cancelled) {
+        setAssetsReady(true);
+        lastTsRef.current = 0;
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setAssetsReady(true);
+        lastTsRef.current = 0;
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    });
+    return () => { cancelled = true; cancelAnimationFrame(rafRef.current); };
   }, [loadImages, tick]);
 
   useEffect(() => {
@@ -850,10 +696,7 @@ export default function StackingGame() {
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
-    return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-    };
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
   }, []);
 
   const restart = () => {
@@ -867,14 +710,16 @@ export default function StackingGame() {
     rightInitialRef.current = false;
   };
 
-  const btn = {
+  // Shared glass button style
+  const glassBtn = {
     padding: "12px 28px",
     fontSize: "17px",
-    borderRadius: "16px",
+    borderRadius: "18px",
     border: "none",
     cursor: "pointer",
     fontFamily: "'Fredoka One', cursive",
     boxShadow: "0 6px 14px rgba(0,0,0,0.15)",
+    transition: "transform 0.1s ease",
   };
 
   return (
@@ -889,100 +734,122 @@ export default function StackingGame() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "flex-start",
-        gap: 6,
-        padding: "6px 8px max(12px, env(safe-area-inset-bottom, 12px))",
-        fontFamily: "'Nunito', sans-serif",
+        gap: 0,
+        padding: "0 0 max(12px, env(safe-area-inset-bottom, 12px))",
+        fontFamily: "'Fredoka One', cursive",
         color: "#e8eef5",
         overflow: "hidden",
       }}
     >
-      {!assetsReady && (
-        <p style={{ fontFamily: "'Fredoka One', cursive", fontSize: 18 }}>
-          Loading game…
-        </p>
-      )}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 16,
-          flexWrap: "wrap",
-          justifyContent: "center",
-          flexShrink: 0,
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => navigate("/level-selection")}
-          style={{ ...btn, background: "#2a3440", color: "#e8eef5" }}
-        >
-          ← Levels
-        </button>
-        <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: 22 }}>
-          Sustainabear — Stack the Sushi
+      <style>{HUD_STYLES}</style>
+
+      {/* ── Glass HUD ── */}
+      <div id="sg-hud">
+        <div className="sg-hud-block">
+          <span className="sg-hud-label">Score</span>
+          <span className="sg-hud-val">{hud.score}</span>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowSettings(true)}
-          title="Settings"
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 12,
-            border: "1px solid rgba(255,255,255,0.2)",
-            background: "rgba(255,255,255,0.08)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <img src={settingsCogImg} alt="" style={{ width: 26, height: 26 }} />
-        </button>
+        <div className="sg-hud-block">
+          <span className="sg-hud-label">Clears</span>
+          <span className={`sg-hud-val${hud.clears > 0 ? " good" : ""}`}>{hud.clears}</span>
+        </div>
+        <div className="sg-hud-block">
+          <span className="sg-hud-label">Multiplier</span>
+          <span className={`sg-hud-val${hud.mult >= 1 ? " warn" : ""}`}>×{Number(hud.mult ?? 0).toFixed(1)}</span>
+        </div>
+        <div className="sg-hud-block">
+          <span className="sg-hud-label">Speed</span>
+          <span className="sg-hud-val">{hud.speed}</span>
+        </div>
+        {hud.gameOver && (
+          <div className="sg-hud-block">
+            <span className="sg-hud-val" style={{ color: "#ff9e7a", fontSize: "1rem" }}>Game over</span>
+          </div>
+        )}
       </div>
 
-      <div
+      {/* ── Settings cog — fixed top right, always on top ── */}
+      <button
+        onClick={() => setShowSettings(true)}
+        title="Settings"
         style={{
-          display: "flex",
-          gap: 20,
-          fontSize: 15,
-          flexWrap: "wrap",
-          justifyContent: "center",
-          flexShrink: 0,
+          position: "fixed", top: "14px", right: "14px", zIndex: 550,
+          width: "46px", height: "46px",
+          background: "rgba(255,255,255,0.22)",
+          backdropFilter: "blur(14px) saturate(1.6)",
+          WebkitBackdropFilter: "blur(14px) saturate(1.6)",
+          border: "1px solid rgba(255,255,255,0.45)", borderRadius: "14px",
+          boxShadow: "0 4px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)",
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
         }}
+        onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1) rotate(22deg)"}
+        onMouseLeave={e => e.currentTarget.style.transform = "scale(1) rotate(0deg)"}
       >
-        <span>Score: {hud.score}</span>
-        <span>×{Number(hud.mult ?? 0).toFixed(1)}</span>
-        <span>Speed: {hud.speed}</span>
-        {hud.gameOver && <span style={{ color: "#ff9e7a" }}>Game over</span>}
+        <img src={settingsCogImg} alt="settings" style={{ width: "26px", height: "26px", objectFit: "contain" }} />
+      </button>
+
+      {/* ── Levels button — fixed top left ── */}
+      <button
+        onClick={() => navigate("/level-selection")}
+        style={{
+          position: "fixed", top: "14px", left: "14px", zIndex: 550,
+          padding: "10px 20px", fontSize: "16px", borderRadius: "18px",
+          border: "1px solid rgba(255,255,255,0.45)",
+          background: "rgba(255,255,255,0.22)",
+          backdropFilter: "blur(14px) saturate(1.6)",
+          WebkitBackdropFilter: "blur(14px) saturate(1.6)",
+          color: "#fff", cursor: "pointer",
+          fontFamily: "'Fredoka One', cursive",
+          boxShadow: "0 4px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)",
+          transition: "transform 0.1s ease",
+        }}
+        onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+        onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+      >
+        ← Levels
+      </button>
+
+      {/* ── Bottom hint pill ── */}
+      <div style={{
+        position: "fixed", bottom: "18px", left: "50%", transform: "translateX(-50%)",
+        background: "rgba(255,255,255,0.22)",
+        backdropFilter: "blur(14px) saturate(1.6)",
+        WebkitBackdropFilter: "blur(14px) saturate(1.6)",
+        border: "1px solid rgba(255,255,255,0.45)",
+        borderRadius: "50px",
+        padding: "8px 24px",
+        boxShadow: "0 4px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)",
+        fontSize: "0.75rem", fontWeight: 800, letterSpacing: "1px",
+        color: "rgba(255,255,255,0.9)",
+        textShadow: "0 1px 3px rgba(0,0,0,0.35)",
+        pointerEvents: "none", zIndex: 15,
+        whiteSpace: "nowrap",
+        fontFamily: "'Nunito', sans-serif",
+      }}>
+        ← → move tray &nbsp;•&nbsp; ↓ soft drop
       </div>
 
-      <div
-        style={{
-          margin: 0,
-          opacity: 0.8,
-          fontSize: 13,
-          textAlign: "center",
-          flexShrink: 0,
-          lineHeight: 1.45,
-        }}
-      >
-        <div>← → move tray</div>
-        <div>↓ soft drop</div>
-      </div>
+      {/* ── Loading overlay ── */}
+      {!assetsReady && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 500,
+          background: "rgba(17,17,24,0.95)",
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: "12px",
+        }}>
+          <div style={{ fontSize: "20px", fontFamily: "'Fredoka One', cursive" }}>Loading game…</div>
+          <div style={{ fontSize: "13px", color: "#888", fontFamily: "'Nunito', sans-serif" }}>Hang tight!</div>
+        </div>
+      )}
 
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "0 8px",
-          boxSizing: "border-box",
-        }}
-      >
+      {/* ── Canvas ── */}
+      <div style={{
+        flex: 1, minHeight: 0, width: "100%",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "72px 8px 48px",
+        boxSizing: "border-box",
+      }}>
         <canvas
           ref={canvasRef}
           width={FULL_W}
@@ -1000,63 +867,88 @@ export default function StackingGame() {
         />
       </div>
 
+      {/* ── End / results screen ── */}
       {showEnd && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.55)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 50,
-            padding: 16,
-          }}
-        >
-          <div
-            style={{
-              background: "rgba(255,255,255,0.95)",
-              color: "#2c2316",
-              borderRadius: 24,
-              padding: "32px 40px",
-              maxWidth: 420,
-              textAlign: "center",
-              fontFamily: "'Fredoka One', cursive",
-            }}
-          >
-            <div style={{ fontSize: 48, marginBottom: 8 }}>🍣</div>
-            <h2 style={{ margin: "0 0 12px" }}>Round complete</h2>
-            <p style={{ fontFamily: "'Nunito', sans-serif", margin: "0 0 8px" }}>
-              Score: {gameRef.current.score} · Clears: {gameRef.current.total_clears}
-            </p>
-            <p style={{ fontFamily: "'Nunito', sans-serif", margin: "0 0 20px" }}>
-              Stars: {"⭐".repeat(finalStars) || "—"}
-            </p>
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-              <button type="button" onClick={restart} style={{ ...btn, background: "#7fbf3f", color: "#fff" }}>
-                Play again
+        <div style={{
+          position: "fixed", inset: 0,
+          background: "rgba(0,0,0,0.55)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 400, padding: 16,
+        }}>
+          <div style={{
+            background: "rgba(255,255,255,0.95)",
+            color: "#2c2316",
+            borderRadius: "28px",
+            padding: "44px 48px",
+            maxWidth: "460px",
+            width: "90vw",
+            textAlign: "center",
+            fontFamily: "'Fredoka One', cursive",
+            boxShadow: "0 24px 48px rgba(0,0,0,0.2)",
+            backdropFilter: "blur(18px)",
+          }}>
+            <div style={{ fontSize: "3rem", marginBottom: "8px" }}>🍣</div>
+            <h2 style={{ fontSize: "clamp(24px,5vw,36px)", margin: "0 0 10px", color: "#2c2316" }}>
+              Round Complete!
+            </h2>
+
+            {/* Stats row */}
+            <div style={{
+              display: "flex", justifyContent: "center",
+              gap: "20px", margin: "20px 0 28px", flexWrap: "wrap",
+            }}>
+              {[
+                { label: "SCORE", val: gameRef.current.score },
+                { label: "CLEARS", val: gameRef.current.total_clears },
+                { label: "STARS", val: "⭐".repeat(finalStars) || "—" },
+              ].map(({ label, val }) => (
+                <div key={label} style={{
+                  background: "#e8e1cf", borderRadius: "18px",
+                  padding: "14px 24px",
+                  boxShadow: "0 6px 12px rgba(0,0,0,0.08)",
+                }}>
+                  <div style={{ fontSize: "11px", letterSpacing: "2px", opacity: 0.6, color: "#5a4a35", textTransform: "uppercase" }}>{label}</div>
+                  <div style={{ fontSize: "clamp(22px,4vw,32px)", color: "#5a4a35" }}>{val}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={restart}
+                onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                style={{ ...glassBtn, background: "#7fbf3f", color: "#fff" }}
+              >
+                Play Again ↺
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/level-selection")}
-                style={{ ...btn, background: "#e8e1cf", color: "#3d2e1e" }}
+                onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                style={{ ...glassBtn, background: "#e8e1cf", color: "#3d2e1e" }}
               >
-                Level menu
+                Level Menu
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/level/4")}
-                style={{ ...btn, background: "#4a90c8", color: "#fff" }}
+                onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                style={{ ...glassBtn, background: "#4a90c8", color: "#fff" }}
               >
-                Next level →
+                Next Level →
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* ── Settings panel ── */}
       {showSettings && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 60 }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 550 }}>
           <Settings onClose={() => setShowSettings(false)} />
         </div>
       )}
