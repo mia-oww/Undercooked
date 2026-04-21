@@ -9,6 +9,7 @@ import LevelSelection from "./components/LevelSelection.jsx";
 import Story1 from "./components/Story1.jsx";
 import FishPrepGame from "./components/Games/fishprep/FishPrepGame";
 import TrashSorting from "./components/Games/trash_sorting/TrashSorting.jsx";
+import StackingGame from "./components/Games/stackingGame/StackingGame.jsx";
 import LeaderboardPage from "./leaderboard.jsx";
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/story1" element={<Story1 />} />
         <Route path="/level-selection" element={<LevelSelection />} />
         <Route path="/level/2" element={<FishPrepGame key={window.location.pathname} />} />
+        <Route path="/level/3" element={<StackingGame key={window.location.pathname} />} />
         <Route path="/level/4" element={<TrashSorting />} />
         <Route path="/level/:levelId" element={<RiverGame />} />
         <Route path="/settings" element={<Settings />} />
