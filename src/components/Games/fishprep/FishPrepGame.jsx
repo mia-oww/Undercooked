@@ -7,7 +7,7 @@ import { supabase } from "../../../supabase";
 import LoadingScreen from "../../../LoadingScreen"; // LOADING SCREEN IF IT TAKES FOREVER TO LOAD
 
 import backgroundImg from "../../../assets/sprites/fish-prep/background2.png";
-import pageBgImg from "../../../assets/sprites/fish-prep/backgroundbear.png";
+import pageBgImg from "../../../assets/trees_background1.png";
 import deadfishImg from "../../../assets/sprites/fish-prep/deadfish.png";
 import filletImg from "../../../assets/sprites/fish-prep/fillet.png";
 import bonefishImg from "../../../assets/sprites/fish-prep/fishbone2.png";
@@ -23,7 +23,7 @@ import wavingBearImg from "../../../assets/sprites/river-game-sprites/wavingbear
 import sliceSound from "../../../assets/sprites/fish-prep/slice.mp3";
 
 // speed fish sprites
-import redSnapperImg from "../../../assets/sprites/fish-prep/Red_Snapper.png";
+import redSnapperImg from "../../../assets/sprites/fish-prep/red snapper.png";
 import mackerelImg from "../../../assets/sprites/fish-prep/Mackerel.png";
 import yellowfinImg from "../../../assets/sprites/fish-prep/Yellowfin.png";
 import tunaImg from "../../../assets/sprites/fish-prep/Tuna.png";
