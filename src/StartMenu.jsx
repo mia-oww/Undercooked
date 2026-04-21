@@ -115,17 +115,6 @@ export default function StartMenu() {
     }
   }
 
-  function handleClearCache() {
-    const confirmed = window.confirm("Clear all local guest test data and reset local progress?");
-    if (!confirmed) return;
-
-    localStorage.clear();
-    endGuestMode();
-    startGuestMode();
-    navigate("/");
-    window.location.reload();
-  }
-
   return (
     <div>
       <img
@@ -239,34 +228,6 @@ export default function StartMenu() {
           transition: "transform 0.15s ease",
         }}
       />
-
-      <button
-        onClick={handleClearCache}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "scale(1.05)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "scale(1)";
-        }}
-        style={{
-          position: "fixed",
-          bottom: "2%",
-          left: "2%",
-          zIndex: 3,
-          padding: "8px 14px",
-          fontSize: "12px",
-          borderRadius: "12px",
-          border: "none",
-          backgroundColor: "rgba(223, 56, 10, 0.92)",
-          cursor: "pointer",
-          boxShadow: "0 6px 12px rgb(253, 253, 253)",
-          fontFamily: "'Fredoka One', cursive",
-          transition: "transform 0.1s ease",
-          color: "white",
-        }}
-      >
-        Clear Progress?
-      </button>
 
 <PlayerProfile
   username={

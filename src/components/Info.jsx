@@ -6,42 +6,12 @@ export default function Game() {
   const nav = useNavigate();
   const [tab, setTab] = useState("about");
 
-  const recipesList = useMemo(
-    () => [
-      { level: 1, text: "Rice + Salmon = 🥘" },
-      { level: 2, text: "Rice + Shrimp = 🍤" },
-      { level: 3, text: "Rice + Tamago = 🍳" },
-      { level: 4, text: "Rice + Tuna = 🍣" },
-      { level: 5, text: "Rice + Avocado = 🥑" },
-      { level: 6, text: "Rice + Cucumber = 🥒" },
-      { level: 7, text: "Rice + Crab = 🦀" },
-      { level: 8, text: "Rice + Eel = 🐟" },
-      { level: 9, text: "Rice + Tofu = 🍲" },
-      { level: 10, text: "Rice + Mushroom = 🍄" },
-      { level: 11, text: "Rice + Beef = 🥩" },
-      { level: 12, text: "Rice + Chicken = 🍗" },
-      { level: 13, text: "Rice + Carrot = 🥕" },
-      { level: 14, text: "Rice + Seaweed = 🌿" },
-      { level: 15, text: "Rice + Tempura = 🍤" },
-      { level: 16, text: "Rice + Onion = 🧅" },
-      { level: 17, text: "Rice + Pepper = 🫑" },
-      { level: 18, text: "Rice + Corn = 🌽" },
-      { level: 19, text: "Rice + Eggplant = 🍆" },
-      { level: 20, text: "Rice + Sesame = 🌰" },
-      { level: 21, text: "Rice + Tomato = 🍅" },
-      { level: 22, text: "Rice + Lettuce = 🥬" },
-      { level: 23, text: "Rice + Pork = 🍖" },
-      { level: 24, text: "Rice + Fish Roe = 🟠" },
-    ],
-    []
-  );
-
+  
   const content = useMemo(
     () => ({
       about:
-        "Sustainabear is a culinary-themed game where players match ingredients to complete recipes while managing a growing restaurant. Success depends not only on speed and strategy, but also on making sustainable choices that reduce food waste and improve efficiency.",
-      team: "This game is presented to you by the Overcooked Team.\n\n ~View our code here~ \n https://github.com/mia-oww/Undercooked",
-      achievements: "- 🍣 First Dish: Finish the first chapter\n\n- ⭐️ Triple Threat: Earn 3 stars on any level.\n\n- 🌱 Sustainable Master: Reach maximum sustainability score.\n\n- 🎯 On a Roll! : Complete 5 levels in a row without failing. \n\n- 🏅 Perfect Plate: Earn 3 stars on ALL levels.\n\n- 💎 Cosmetic Completionist: Collect every cosmetic in the game.\n",
+        "Sustainabear is a series of mini-games where players work to restore the environment while learning about sustainability in a simplified way ",
+      team: "This game is presented to you by the Undercooked Team consisting of Mia, Sia, Rena, Nashita, Sid, Godric, and Ryan.\n\n ~View our code here~ \n https://github.com/mia-oww/Undercooked",
     }),
     []
   );
@@ -110,25 +80,6 @@ export default function Game() {
               about the game
             </button>
 
-            <button
-              onClick={() => setTab("recipes")}
-              style={{
-                ...tabBtn,
-                ...(active("recipes") ? tabBtnActive : null),
-              }}
-            >
-              recipes
-            </button>
-
-            <button
-              onClick={() => setTab("achievements")}
-              style={{
-                ...tabBtn,
-                ...(active("achievements") ? tabBtnActive : null),
-              }}
-            >
-              achievements
-            </button>
 
             <button
               onClick={() => setTab("team")}
@@ -158,69 +109,7 @@ export default function Game() {
               overflow: "hidden",
             }}
           >
-            {tab === "recipes" ? (
-              <div
-                style={{
-                  height: "480px",
-                  overflowY: "auto",
-                  paddingRight: "12px",
-                }}
-                className="recipesScroll"
-              >
-                <div style={{ fontSize: "24px", marginBottom: "14px", color: "rgba(0,0,0,0.9)" }}>
-                  Recipes
-                </div>
-
-                {recipesList.map((r) => (
-                  <div
-                    key={r.level}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "20px 20px",
-                      borderRadius: "18px",
-                      background: "rgba(255,255,255,0.55)",
-                      boxShadow: "0 8px 15px rgba(0,0,0,0.10)",
-                      marginBottom: "14px",
-                    }}
-                  >
-                    <div style={{ fontSize: "18px", opacity: 0.9 }}>Level {r.level}</div>
-                    <div style={{ fontSize: "20px" }}>{r.text}</div>
-                  </div>
-                ))}
-              </div>
-            ) : tab === "achievements" ? (
-              <div
-                style={{
-                  height: "480px",
-                  overflowY: "auto",
-                  paddingRight: "12px",
-                }}
-                className="recipesScroll"
-              >
-                <div style={{ fontSize: "24px", marginBottom: "14px", color: "rgba(0,0,0,0.9)" }}>
-                  🏆 Achievements 🏆
-                </div>
-
-                {content.achievements.split("\n").filter(line => line.trim()).map((achievement, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: "16px 20px",
-                      borderRadius: "18px",
-                      background: "rgba(255,255,255,0.55)",
-                      boxShadow: "0 8px 15px rgba(0,0,0,0.10)",
-                      marginBottom: "14px",
-                      fontSize: "18px",
-                      color: "rgba(0,0,0,0.9)",
-                    }}
-                  >
-                    {achievement}
-                  </div>
-                ))}
-              </div>
-            ) : (
+            : (
               <div
                 style={{
                   fontSize: "22px",

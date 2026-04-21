@@ -16,8 +16,6 @@ export default function Settings({ onClose, background, extraButtons }) {
   const [masterVolume, setMasterVolume] = useState(50);
   const [musicVolume, setMusicVolume] = useState(50);
   const [soundEffects, setSoundEffects] = useState(50);
-  const [hardMode, setHardMode] = useState(false);
-  const [hints, setHints] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -27,8 +25,6 @@ export default function Settings({ onClose, background, extraButtons }) {
         masterVolume: 50,
         musicVolume: 50,
         soundEffects: 50,
-        hardMode: false,
-        hints: true,
       };
 
       try {
@@ -44,8 +40,6 @@ export default function Settings({ onClose, background, extraButtons }) {
           setMasterVolume(localSettings.masterVolume);
           setMusicVolume(localSettings.musicVolume);
           setSoundEffects(localSettings.soundEffects);
-          setHardMode(localSettings.hardMode);
-          setHints(localSettings.hints);
           setReady(true);
           return;
         }
@@ -60,8 +54,6 @@ export default function Settings({ onClose, background, extraButtons }) {
           setMasterVolume(localSettings.masterVolume);
           setMusicVolume(localSettings.musicVolume);
           setSoundEffects(localSettings.soundEffects);
-          setHardMode(localSettings.hardMode);
-          setHints(localSettings.hints);
           setReady(true);
           return;
         }
@@ -69,15 +61,11 @@ export default function Settings({ onClose, background, extraButtons }) {
         setMasterVolume(profile.master_volume ?? 50);
         setMusicVolume(profile.music_volume ?? 50);
         setSoundEffects(profile.sound_effects_volume ?? 50);
-        setHardMode(localSettings.hardMode);
-        setHints(localSettings.hints);
         setReady(true);
       } catch (error) {
         setMasterVolume(localSettings.masterVolume);
         setMusicVolume(localSettings.musicVolume);
         setSoundEffects(localSettings.soundEffects);
-        setHardMode(localSettings.hardMode);
-        setHints(localSettings.hints);
         setReady(true);
       }
     }
@@ -95,7 +83,7 @@ export default function Settings({ onClose, background, extraButtons }) {
   };
 
   const handleSave = async () => {
-    const settings = { masterVolume, musicVolume, soundEffects, hardMode, hints };
+    const settings = { masterVolume, musicVolume, soundEffects };
     localStorage.setItem("gameSettings", JSON.stringify(settings));
 
     try {
@@ -131,15 +119,11 @@ export default function Settings({ onClose, background, extraButtons }) {
       masterVolume: 50,
       musicVolume: 50,
       soundEffects: 50,
-      hardMode: false,
-      hints: true,
     };
 
     setMasterVolume(defaults.masterVolume);
     setMusicVolume(defaults.musicVolume);
     setSoundEffects(defaults.soundEffects);
-    setHardMode(defaults.hardMode);
-    setHints(defaults.hints);
 
     localStorage.setItem("gameSettings", JSON.stringify(defaults));
 
@@ -221,12 +205,6 @@ export default function Settings({ onClose, background, extraButtons }) {
     { label: "Sound Effects", value: soundEffects, setter: setSoundEffects, img: sushiTamago },
   ];
 
-  const toggleRows = [
-    { label: "Hard Mode", value: hardMode, setter: setHardMode },
-    { label: "Hints", value: hints, setter: setHints },
-  ];
-
-
   if (!ready) return null;
 
   return (
@@ -291,24 +269,6 @@ export default function Settings({ onClose, background, extraButtons }) {
                 />
                 <img className="sushiKnob" src={row.img} alt="" draggable={false} />
               </div>
-            </div>
-          ))}
-
-          {toggleRows.map((row) => (
-            <div
-              key={row.label}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: "22px",
-                fontSize: "24px",
-              }}
-            >
-              {row.label}
-              <label className="switch">
-                <input type="checkbox" checked={row.value} onChange={() => row.setter(!row.value)} />
-                <span className="slider" />
-              </label>
             </div>
           ))}
 
@@ -396,33 +356,6 @@ export default function Settings({ onClose, background, extraButtons }) {
           filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
           user-select: none;
         }
-        .switch {
-          position: relative;
-          display: inline-block;
-          width: 60px;
-          height: 34px;
-        }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-          position: absolute;
-          cursor: pointer;
-          inset: 0;
-          background-color: #ccc;
-          border-radius: 34px;
-        }
-        .slider:before {
-          content: "";
-          position: absolute;
-          height: 26px;
-          width: 26px;
-          left: 4px;
-          bottom: 4px;
-          background-color: white;
-          border-radius: 50%;
-          transition: .3s;
-        }
-        input:checked + .slider { background-color: #4CAF50; }
-        input:checked + .slider:before { transform: translateX(26px); }
       `}</style>
     </div>
   );
