@@ -391,9 +391,9 @@ class GameState {
 
 // Stars based on completed sushi count
 function calcStars(completedSushi) {
-  if (completedSushi >= 10) return 3;
+  if (completedSushi >= 8) return 3;
   if (completedSushi >= 5) return 2;
-  if (completedSushi >= 3) return 1;
+  if (completedSushi >= 2) return 1;
   return 0;
 }
 
