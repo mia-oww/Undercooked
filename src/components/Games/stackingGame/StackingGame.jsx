@@ -11,10 +11,19 @@ import roeImg from "../../../assets/sprites/stacking_roe.png";
 import completedSushiImg from "../../../assets/sprites/sushi_salmon.png";
 import settingsCogImg from "../../../assets/settings_cog.png";
 import livesImg from "../../../assets/sprites/river-game-sprites/lives.png";
+import wavingBearImg from "../../../assets/sprites/river-game-sprites/wavingbear.png";
 import blankHoneyImg from "../../../assets/sprites/fish-prep/blankhoney.png";
 import filledHoneyImg from "../../../assets/sprites/fish-prep/honey2.png";
 
 const CURRENT_LEVEL_ID = 3;
+
+const INTRO_DIALOGUE = [
+  { speaker: "Bear", text: "Welcome to the sushi prep station! Our customers are waiting for fresh rolls." },
+  { speaker: "Bear", text: "Ingredients will fall from above — Rice, Salmon, and Roe. Stack them in that exact order to make a perfect sushi roll!" },
+  { speaker: "Narrator", text: "Use ← → arrow keys to move your tray left and right." },
+  { speaker: "Narrator", text: "Press ↓ to drop ingredients faster. The faster you stack, the higher your score multiplier!" },
+  { speaker: "Narrator", text: "Watch out — stacking ingredients in the wrong order resets your multiplier AND costs you a life. You only have 3!" },
+];
 
 const CONFIG = {
   WIDTH: 21,
@@ -389,7 +398,6 @@ class GameState {
   }
 }
 
-// Stars based on completed sushi count
 function calcStars(completedSushi) {
   if (completedSushi >= 8) return 3;
   if (completedSushi >= 5) return 2;
@@ -435,17 +443,14 @@ const HUD_STYLES = `
     85%  { transform: scale(1.12); }
     100% { transform: scale(1); }
   }
-.honey {
-  width: 64px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.3;
-}
-.honey img { width: 100%; height: 100%; object-fit: contain; }
-.honey.earned { opacity: 1; }
-.honey.pop { animation: honeyPop 0.6s cubic-bezier(0.34,1.56,0.6,1) forwards; }
+  .honey {
+    width: 64px; height: 64px;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0.3;
+  }
+  .honey img { width: 100%; height: 100%; object-fit: contain; }
+  .honey.earned { opacity: 1; }
+  .honey.pop { animation: honeyPop 0.6s cubic-bezier(0.34,1.56,0.6,1) forwards; }
 `;
 
 export default function StackingGame() {
@@ -465,18 +470,23 @@ export default function StackingGame() {
   const [hud, setHud] = useState({ score: 0, mult: 0, speed: 1.5, clears: 0, gameOver: false });
   const [assetsReady, setAssetsReady] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  //const [showEnd, setShowEnd] = useState(false);
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [finalStars, setFinalStars] = useState(0);
- const [honeyStars, setHoneyStars] = useState([false, false, false]);
-  const [endReason, setEndReason] = useState("time"); // "time" | "lives"
+  const [honeyStars, setHoneyStars] = useState([false, false, false]);
+  const [endReason, setEndReason] = useState("time");
   const [lives, setLives] = useState(3);
   const [timeLeft, setTimeLeft] = useState(60);
   const [showEnd, setShowEnd] = useState(-1);
 
+  // Intro state
+  const [introReady, setIntroReady] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [dialogueIndex, setDialogueIndex] = useState(0);
+  const [canSkip, setCanSkip] = useState(false);
+
   const W = CONFIG.WIDTH;
   const H = CONFIG.HEIGHT;
   const CELL = CONFIG.CELL_PX;
-  const LEFT_PANEL_W = CONFIG.left_tally_width_px;
   const PLAYFIELD_W = W * CELL;
   const FULL_W = PLAYFIELD_W;
   const CANVAS_H = H * CELL;
@@ -487,7 +497,7 @@ export default function StackingGame() {
     return Promise.all(
       entries.map(([key, src]) =>
         new Promise((resolve) => {
-          const im = new Image(); 
+          const im = new Image();
           im.onload = () => resolve([key, im]);
           im.onerror = () => resolve([key, null]);
           im.src = src;
@@ -561,7 +571,6 @@ export default function StackingGame() {
     ctx.clearRect(0, 0, FULL_W, CANVAS_H);
     drawPlayfieldOverlay(ctx, OFF);
 
-    // Tally: single sushi icon + count, bottom-left, no box
     const tallyImg = imgs.CompletedSushi;
     if (g.completed_sushi > 0 && tallyImg?.complete && tallyImg.naturalWidth) {
       const TALLY_H = 52;
@@ -662,14 +671,14 @@ export default function StackingGame() {
   }, []);
 
   const triggerEndScreen = useCallback((reason, g) => {
-  if (endedRef.current) return;
-  endedRef.current = true;
-  const stars = calcStars(g.completed_sushi);
-  setFinalStars(stars);
-  setEndReason(reason);
-  setShowEnd(stars); // pass stars directly
-  persistProgress(stars, g.score);
-}, [persistProgress]);
+    if (endedRef.current) return;
+    endedRef.current = true;
+    const stars = calcStars(g.completed_sushi);
+    setFinalStars(stars);
+    setEndReason(reason);
+    setShowEnd(stars);
+    persistProgress(stars, g.score);
+  }, [persistProgress]);
 
   const tick = useCallback((ts) => {
     if (!lastTsRef.current) lastTsRef.current = ts;
@@ -718,42 +727,71 @@ export default function StackingGame() {
     rafRef.current = requestAnimationFrame(tick);
   }, [draw, handleInput, persistProgress, triggerEndScreen]);
 
+  const startGame = useCallback(() => {
+    setGameStarted(true);
+  }, []);
+
+  // Load images + check if user has already seen intro
   useEffect(() => {
     let cancelled = false;
-    loadImages().then(() => {
-      if (!cancelled) {
-        setAssetsReady(true);
-        lastTsRef.current = 0;
-        rafRef.current = requestAnimationFrame(tick);
+    loadImages().then(async () => {
+      if (cancelled) return;
+      setAssetsReady(true);
+
+      // Check if returning player — skip intro if they've already beaten this level
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: profile, error } = await supabase
+            .from("profiles")
+            .select("level")
+            .eq("user_id", session.user.id)
+            .single();
+          if (!error && profile?.level > CURRENT_LEVEL_ID) {
+            setCanSkip(true);
+            setGameStarted(true);
+            setIntroReady(true);
+            return;
+          }
+        }
+      } catch (e) {
+        // guest mode — just show intro
       }
+      setIntroReady(true);
     }).catch(() => {
       if (!cancelled) {
         setAssetsReady(true);
-        lastTsRef.current = 0;
-        rafRef.current = requestAnimationFrame(tick);
+        setIntroReady(true);
       }
     });
-    return () => { cancelled = true; cancelAnimationFrame(rafRef.current); };
-  }, [loadImages, tick]);
+    return () => { cancelled = true; };
+  }, [loadImages]);
+
+  // Start the game loop only after intro is dismissed
+  useEffect(() => {
+    if (!gameStarted || !assetsReady) return;
+    lastTsRef.current = 0;
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [gameStarted, assetsReady, tick]);
 
   useEffect(() => {
-  if (showEnd < 0) return;
-  setHoneyStars([false, false, false]);
-  const timeouts = [];
-  for (let idx = 0; idx < showEnd; idx++) {
-    const t = setTimeout(() => {
-      setHoneyStars(prev => {
-        const next = [...prev];
-        next[idx] = true;
-        return next;
-      });
-    }, 600 + idx * 450);
-    timeouts.push(t);
-  }
-  return () => timeouts.forEach(clearTimeout);
-}, [showEnd]);
+    if (showEnd < 0) return;
+    setHoneyStars([false, false, false]);
+    const timeouts = [];
+    for (let idx = 0; idx < showEnd; idx++) {
+      const t = setTimeout(() => {
+        setHoneyStars(prev => {
+          const next = [...prev];
+          next[idx] = true;
+          return next;
+        });
+      }, 600 + idx * 450);
+      timeouts.push(t);
+    }
+    return () => timeouts.forEach(clearTimeout);
+  }, [showEnd]);
 
-// Update all showEnd checks in JSX:
   useEffect(() => {
     const down = (e) => {
       if (e.code === "ArrowLeft") keysRef.current.left = true;
@@ -770,20 +808,35 @@ export default function StackingGame() {
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
   }, []);
 
-  
   const restart = () => {
-  endedRef.current = false;
-  setShowEnd(-1);
-  setLives(3);
-  setTimeLeft(60);
-  setHoneyStars([false, false, false]);
-  gameRef.current = new GameState();
-  lastTsRef.current = 0;
-  leftHoldRef.current = 0;
-  rightHoldRef.current = 0;
-  leftInitialRef.current = false;
-  rightInitialRef.current = false;
-};
+    endedRef.current = false;
+    setShowEnd(-1);
+    setLives(3);
+    setTimeLeft(60);
+    setHoneyStars([false, false, false]);
+    gameRef.current = new GameState();
+    lastTsRef.current = 0;
+    leftHoldRef.current = 0;
+    rightHoldRef.current = 0;
+    leftInitialRef.current = false;
+    rightInitialRef.current = false;
+  };
+
+  const isLastDialogue = dialogueIndex === INTRO_DIALOGUE.length - 1;
+  const currentLine = INTRO_DIALOGUE[dialogueIndex];
+
+  const handleDialogueNext = () => {
+    if (!isLastDialogue) {
+      setDialogueIndex(i => i + 1);
+    } else {
+      startGame();
+    }
+  };
+
+  const handleDialogueBack = (e) => {
+    e.stopPropagation();
+    if (dialogueIndex > 0) setDialogueIndex(i => i - 1);
+  };
 
   const btnStyle = {
     padding: "14px 38px",
@@ -816,44 +869,45 @@ export default function StackingGame() {
       <style>{HUD_STYLES}</style>
 
       {/* ── Glass HUD ── */}
-      <div id="sg-hud">
-        <div className="sg-hud-block">
-          <span className="sg-hud-label">Score</span>
-          <span className="sg-hud-val">{hud.score}</span>
-        </div>
-        <div className="sg-hud-block">
-          <span className="sg-hud-label">Clears</span>
-          <span className={`sg-hud-val${hud.clears > 0 ? " good" : ""}`}>{hud.clears}</span>
-        </div>
-        <div className="sg-hud-block">
-          <span className="sg-hud-label">Mult</span>
-          <span className={`sg-hud-val${hud.mult >= 1 ? " warn" : ""}`}>×{Number(hud.mult ?? 0).toFixed(1)}</span>
-        </div>
-        <div className="sg-hud-block">
-          <span className="sg-hud-label">Speed</span>
-          <span className="sg-hud-val">{hud.speed}</span>
-        </div>
-        <div className="sg-hud-block">
-
-          <span className="sg-hud-label">Lives</span>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            {[0, 1, 2].map(i => (
-              <img key={i} src={livesImg} alt="" style={{
-                width: "28px", height: "28px", objectFit: "contain",
-                marginRight: i < 2 ? "-6px" : 0,
-                filter: i >= lives ? "grayscale(1) opacity(0.3)" : "none",
-                transition: "filter 0.3s",
-              }} />
-            ))}
+      {gameStarted && (
+        <div id="sg-hud">
+          <div className="sg-hud-block">
+            <span className="sg-hud-label">Score</span>
+            <span className="sg-hud-val">{hud.score}</span>
+          </div>
+          <div className="sg-hud-block">
+            <span className="sg-hud-label">Clears</span>
+            <span className={`sg-hud-val${hud.clears > 0 ? " good" : ""}`}>{hud.clears}</span>
+          </div>
+          <div className="sg-hud-block">
+            <span className="sg-hud-label">Mult</span>
+            <span className={`sg-hud-val${hud.mult >= 1 ? " warn" : ""}`}>×{Number(hud.mult ?? 0).toFixed(1)}</span>
+          </div>
+          <div className="sg-hud-block">
+            <span className="sg-hud-label">Speed</span>
+            <span className="sg-hud-val">{hud.speed}</span>
+          </div>
+          <div className="sg-hud-block">
+            <span className="sg-hud-label">Lives</span>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              {[0, 1, 2].map(i => (
+                <img key={i} src={livesImg} alt="" style={{
+                  width: "28px", height: "28px", objectFit: "contain",
+                  marginRight: i < 2 ? "-6px" : 0,
+                  filter: i >= lives ? "grayscale(1) opacity(0.3)" : "none",
+                  transition: "filter 0.3s",
+                }} />
+              ))}
+            </div>
+          </div>
+          <div className="sg-hud-block">
+            <span className="sg-hud-label">Time</span>
+            <span className={`sg-hud-val${timeLeft <= 10 ? " danger" : timeLeft <= 20 ? " warn" : ""}`}>
+              {Math.ceil(timeLeft)}s
+            </span>
           </div>
         </div>
-        <div className="sg-hud-block">
-          <span className="sg-hud-label">Time</span>
-          <span className={`sg-hud-val${timeLeft <= 60 ? " danger" : timeLeft <= 20 ? " warn" : ""}`}>
-            {Math.ceil(timeLeft)}s
-          </span>
-        </div>
-      </div>
+      )}
 
       {/* ── Settings cog ── */}
       <button
@@ -876,44 +930,24 @@ export default function StackingGame() {
         <img src={settingsCogImg} alt="settings" style={{ width: "26px", height: "26px", objectFit: "contain" }} />
       </button>
 
-      {/* ── Levels button ── */}
-      {/*}
-      <button
-        onClick={() => navigate("/level-selection")}
-        style={{
-          position: "fixed", top: "14px", left: "14px", zIndex: 550,
-          padding: "10px 20px", fontSize: "16px", borderRadius: "18px",
-          border: "1px solid rgba(255,255,255,0.45)",
+      {/* ── Bottom hint pill ── */}
+      {gameStarted && (
+        <div style={{
+          position: "fixed", bottom: "18px", left: "50%", transform: "translateX(-50%)",
           background: "rgba(255,255,255,0.22)",
           backdropFilter: "blur(14px) saturate(1.6)",
           WebkitBackdropFilter: "blur(14px) saturate(1.6)",
-          color: "#fff", cursor: "pointer",
-          fontFamily: "'Fredoka One', cursive",
+          border: "1px solid rgba(255,255,255,0.45)",
+          borderRadius: "50px", padding: "8px 24px",
           boxShadow: "0 4px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)",
-          transition: "transform 0.1s ease",
-        }}
-        onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
-        onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-      >
-        ← 
-      </button> */}
-
-      {/* ── Bottom hint pill ── */}
-      <div style={{
-        position: "fixed", bottom: "18px", left: "50%", transform: "translateX(-50%)",
-        background: "rgba(255,255,255,0.22)",
-        backdropFilter: "blur(14px) saturate(1.6)",
-        WebkitBackdropFilter: "blur(14px) saturate(1.6)",
-        border: "1px solid rgba(255,255,255,0.45)",
-        borderRadius: "50px", padding: "8px 24px",
-        boxShadow: "0 4px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)",
-        fontSize: "0.75rem", fontWeight: 800, letterSpacing: "1px",
-        color: "rgba(255,255,255,0.9)", textShadow: "0 1px 3px rgba(0,0,0,0.35)",
-        pointerEvents: "none", zIndex: 15, whiteSpace: "nowrap",
-        fontFamily: "'Nunito', sans-serif",
-      }}>
-        Stack a Rice, Salmon, & Roe to create a sushi roll! | Use ←→ to move, ↓ to drop.
-      </div>
+          fontSize: "0.75rem", fontWeight: 800, letterSpacing: "1px",
+          color: "rgba(255,255,255,0.9)", textShadow: "0 1px 3px rgba(0,0,0,0.35)",
+          pointerEvents: "none", zIndex: 15, whiteSpace: "nowrap",
+          fontFamily: "'Nunito', sans-serif",
+        }}>
+          Stack a Rice, Salmon, & Roe to create a sushi roll! | Use ←→ to move, ↓ to drop.
+        </div>
+      )}
 
       {/* ── Loading overlay ── */}
       {!assetsReady && (
@@ -952,7 +986,144 @@ export default function StackingGame() {
         />
       </div>
 
-      {/* ── Results screen — FishPrepGame style ── */}
+      {/* ── Intro dialogue ── */}
+      {introReady && !gameStarted && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50 }}>
+          {/* Skip button */}
+          <button
+            onClick={startGame}
+            onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+            onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+            style={{ ...btnStyle, position: "absolute", top: "3%", right: "3%", backgroundColor: "#e8e1cf", color: "#3d2e1e" }}>
+            Skip →
+          </button>
+
+          {/* Level menu button */}
+          <button
+            onClick={() => navigate("/level-selection")}
+            onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+            onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+            style={{ ...btnStyle, position: "absolute", top: "3%", left: "3%", backgroundColor: "#e8e1cf", color: "#3d2e1e" }}>
+            ← Level Menu
+          </button>
+
+          {/* Waving bear */}
+          <img
+            src={wavingBearImg}
+            alt="waving bear"
+            style={{
+              position: "absolute", bottom: 0, left: "2%",
+              height: "55vh", maxHeight: "420px",
+              objectFit: "contain", zIndex: 1,
+              filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.2))",
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* Dialogue box */}
+          <div
+            onClick={handleDialogueNext}
+            style={{
+              position: "absolute", bottom: "4%", left: "50%",
+              transform: "translateX(-50%)",
+              width: "72vw", maxWidth: "860px",
+              cursor: "pointer", zIndex: 2,
+            }}
+          >
+            {/* Speaker tab */}
+            <div style={{
+              display: "inline-block",
+              background: "#f5eedc",
+              border: "3px solid #c8b89a",
+              borderBottom: "none",
+              borderRadius: "14px 14px 0 0",
+              padding: "6px 22px",
+              fontFamily: "'Fredoka One', cursive",
+              fontSize: "18px",
+              color: "#5a4a35",
+              marginLeft: "24px",
+              boxShadow: "0 -2px 8px rgba(0,0,0,0.06)",
+            }}>
+              {currentLine.speaker}
+            </div>
+
+            {/* Dialogue content */}
+            <div style={{
+              background: "#fdf6e3",
+              border: "3px solid #c8b89a",
+              borderRadius: "0 18px 18px 18px",
+              padding: "24px 32px",
+              boxShadow: "0 8px 30px rgba(0,0,0,0.18)",
+              textAlign: "left",
+            }}>
+              <p style={{
+                fontFamily: "'Fredoka One', cursive",
+                fontSize: "clamp(16px, 1.8vw, 22px)",
+                color: "#3d2e1e",
+                margin: 0, lineHeight: 1.6,
+                minHeight: "60px",
+              }}>
+                {currentLine.text}
+              </p>
+
+              <div style={{ display: "flex", alignItems: "center", marginTop: "16px", gap: "10px" }}>
+                {/* Back button */}
+                <button
+                  onClick={handleDialogueBack}
+                  disabled={dialogueIndex === 0}
+                  onMouseEnter={e => { if (dialogueIndex > 0) e.currentTarget.style.transform = "scale(1.1)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
+                  style={{
+                    background: "transparent", border: "none",
+                    padding: "4px 12px",
+                    fontFamily: "'Fredoka One', cursive", fontSize: "16px",
+                    color: dialogueIndex === 0 ? "#c8b89a" : "#a08c72",
+                    cursor: dialogueIndex === 0 ? "not-allowed" : "pointer",
+                    transition: "transform 0.1s ease", flexShrink: 0,
+                  }}>
+                  ◀
+                </button>
+
+                {/* Dot indicators */}
+                {INTRO_DIALOGUE.map((_, i) => (
+                  <div key={i} style={{
+                    width: i === dialogueIndex ? "20px" : "8px",
+                    height: "8px", borderRadius: "999px",
+                    background: i === dialogueIndex ? "#c8b89a" : "#e0d5c0",
+                    transition: "width 0.2s ease", flexShrink: 0,
+                  }} />
+                ))}
+
+                <span style={{
+                  marginLeft: "auto",
+                  fontFamily: "'Fredoka One', cursive",
+                  fontSize: "14px", color: "#a08c72", flexShrink: 0,
+                }}>
+                  {isLastDialogue ? "Let's go! ▶" : "Click to continue ▶"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Skip tutorial button for returning players */}
+      {gameStarted && canSkip && showEnd < 0 && (
+        <button
+          onClick={startGame}
+          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+          style={{
+            ...btnStyle,
+            position: "fixed", top: "3%", left: "3%", zIndex: 60,
+            backgroundColor: "#e8e1cf", color: "#3d2e1e",
+            fontSize: "16px", padding: "10px 24px",
+          }}>
+          ← Level Menu
+        </button>
+      )}
+
+      {/* ── Results screen ── */}
       {showEnd >= 0 && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 400,
@@ -981,17 +1152,14 @@ export default function StackingGame() {
               Sushi Rating
             </div>
 
-            {/* Honey jars */}
-            
             <div style={{ display: "flex", gap: "8px", justifyContent: "center", margin: "18px 0" }}>
-  {[0, 1, 2].map((idx) => (
-    <div key={idx} className={`honey${honeyStars[idx] ? " earned" : ""}`}>
-      <img src={honeyStars[idx] ? filledHoneyImg : blankHoneyImg} alt="" />
-    </div>
-  ))}
-</div>
-            
-            {/* Stats */}
+              {[0, 1, 2].map((idx) => (
+                <div key={idx} className={`honey${honeyStars[idx] ? " earned" : ""}`}>
+                  <img src={honeyStars[idx] ? filledHoneyImg : blankHoneyImg} alt="" />
+                </div>
+              ))}
+            </div>
+
             <div style={{ display: "flex", justifyContent: "center", gap: "24px", margin: "18px 0 16px", flexWrap: "wrap" }}>
               {[
                 { label: "SCORE", val: gameRef.current.score },
@@ -1008,10 +1176,7 @@ export default function StackingGame() {
               ))}
             </div>
 
-            <div style={{ color: "#5c5040", marginBottom: "28px", fontSize: "clamp(13px,2.2vw,16px)", lineHeight: 1.45 }}>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "center", gap: "16px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: "16px", flexWrap: "wrap", marginTop: "12px" }}>
               <button
                 onClick={() => navigate("/level-selection")}
                 onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
@@ -1035,8 +1200,75 @@ export default function StackingGame() {
 
       {/* ── Settings panel ── */}
       {showSettings && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 550, color: "#000"}}>
-          <Settings onClose={() => setShowSettings(false)} />
+        <div style={{ position: "fixed", inset: 0, zIndex: 550, color: "#000" }}>
+          <Settings
+            onClose={() => setShowSettings(false)}
+            extraButtons={
+              <button
+                onClick={() => setShowQuitConfirm(true)}
+                onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                style={{
+                  padding: "14px 38px", fontSize: "20px", borderRadius: "18px",
+                  border: "none", backgroundColor: "#7FBF3F", color: "white",
+                  cursor: "pointer", boxShadow: "0 8px 15px rgba(0,0,0,0.15)",
+                  fontFamily: "'Fredoka One', cursive", transition: "transform 0.1s ease",
+                }}>
+                Main Menu
+              </button>
+            }
+          />
+        </div>
+      )}
+
+      {/* ── Quit confirm modal ── */}
+      {showQuitConfirm && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 600,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)",
+        }}>
+          <div style={{
+            background: "rgba(255,255,255,0.95)", borderRadius: "28px",
+            padding: "44px 48px", maxWidth: "420px", width: "90vw",
+            textAlign: "center", boxShadow: "0 24px 48px rgba(0,0,0,0.2)",
+            fontFamily: "'Fredoka One', cursive",
+          }}>
+            <div style={{ fontSize: "3rem", marginBottom: "12px" }}>🏠</div>
+            <h2 style={{ fontSize: "28px", color: "#3d2e1e", margin: "0 0 10px" }}>Go to Main Menu?</h2>
+            <p style={{
+              fontFamily: "'Nunito', sans-serif", fontSize: "16px",
+              color: "#7a6a58", lineHeight: 1.6, margin: "0 0 32px",
+            }}>
+              Your current progress won't be saved.<br />Are you sure you want to leave?
+            </p>
+            <div style={{ display: "flex", gap: "14px", justifyContent: "center" }}>
+              <button
+                onClick={() => setShowQuitConfirm(false)}
+                onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                style={{
+                  padding: "12px 32px", fontSize: "18px", borderRadius: "16px",
+                  border: "none", backgroundColor: "#e8e1cf", color: "#3d2e1e",
+                  cursor: "pointer", fontFamily: "'Fredoka One', cursive",
+                  transition: "transform 0.1s ease", boxShadow: "0 6px 12px rgba(0,0,0,0.12)",
+                }}>
+                Keep Playing
+              </button>
+              <button
+                onClick={() => { setShowQuitConfirm(false); setShowSettings(false); navigate("/level-selection"); }}
+                onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                style={{
+                  padding: "12px 32px", fontSize: "18px", borderRadius: "16px",
+                  border: "none", backgroundColor: "#7FBF3F", color: "white",
+                  cursor: "pointer", fontFamily: "'Fredoka One', cursive",
+                  transition: "transform 0.1s ease", boxShadow: "0 6px 12px rgba(0,0,0,0.12)",
+                }}>
+                Leave
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
