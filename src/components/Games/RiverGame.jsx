@@ -690,9 +690,10 @@ export default function RiverGame() {
 
   const calculateEarnedStars = useCallback((scoreValue, fishSaved) => {
     if (scoreValue <= 0 && fishSaved <= 0) return 0;
-    if (scoreValue >= 120 || fishSaved >= 8) return 3;
-    if (scoreValue >= 70 || fishSaved >= 4) return 2;
-    return 1;
+    if (scoreValue >= 800 || fishSaved >= 18) return 3;
+    if (scoreValue >= 600 || fishSaved >= 13) return 2;
+    if (scoreValue >= 400 || fishSaved >= 7) return 1;
+    return 0;
   }, []);
 
   const removeTracked = useCallback((id) => {
@@ -913,7 +914,7 @@ export default function RiverGame() {
         if (caught) {
           if (type === "trash") {
             stateRef.current.trashCombo++;
-            const pts = 10 * (stateRef.current.trashCombo >= 3 ? 2 : 1);
+            const pts = 16 * (stateRef.current.trashCombo >= 3 ? 2 : 1);
             stateRef.current.score += pts;
             updateScore(pts);
             updateTrashCombo();
@@ -927,7 +928,7 @@ export default function RiverGame() {
           } else {
             stateRef.current.fishCount++;
             stateRef.current.fishCombo++;
-            const baseBonus = src === A.rainbow ? 100 : src === A.golden ? 50 : 10;
+            const baseBonus = src === A.rainbow ? 160 : src === A.golden ? 80 : 16;
             const pts = baseBonus * (stateRef.current.fishCombo >= 3 ? 2 : 1);
             stateRef.current.score += pts;
             updateScore(pts);
