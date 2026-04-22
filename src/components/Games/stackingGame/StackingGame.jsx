@@ -435,8 +435,17 @@ const HUD_STYLES = `
     85%  { transform: scale(1.12); }
     100% { transform: scale(1); }
   }
-  .honey img { width: 64px; height: 64px; }
-  .honey.pop { animation: honeyPop 0.6s cubic-bezier(0.34,1.56,0.6,1) forwards; }
+.honey {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.3;
+}
+.honey img { width: 100%; height: 100%; object-fit: contain; }
+.honey.earned { opacity: 1; }
+.honey.pop { animation: honeyPop 0.6s cubic-bezier(0.34,1.56,0.6,1) forwards; }
 `;
 
 export default function StackingGame() {
@@ -456,13 +465,13 @@ export default function StackingGame() {
   const [hud, setHud] = useState({ score: 0, mult: 0, speed: 1.5, clears: 0, gameOver: false });
   const [assetsReady, setAssetsReady] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showEnd, setShowEnd] = useState(false);
+  //const [showEnd, setShowEnd] = useState(false);
   const [finalStars, setFinalStars] = useState(0);
-  const [honeyEarned, setHoneyEarned] = useState([false, false, false]);
-  const [honeyPop, setHoneyPop] = useState([false, false, false]);
+ const [honeyStars, setHoneyStars] = useState([false, false, false]);
   const [endReason, setEndReason] = useState("time"); // "time" | "lives"
   const [lives, setLives] = useState(3);
-  const [timeLeft, setTimeLeft] = useState(10);
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [showEnd, setShowEnd] = useState(-1);
 
   const W = CONFIG.WIDTH;
   const H = CONFIG.HEIGHT;
@@ -653,30 +662,14 @@ export default function StackingGame() {
   }, []);
 
   const triggerEndScreen = useCallback((reason, g) => {
-    if (endedRef.current) return;
-    endedRef.current = true;
-    const stars = calcStars(g.completed_sushi);
-    setFinalStars(stars);
-    setEndReason(reason);
-    setHoneyEarned([false, false, false]);
-    setHoneyPop([false, false, false]);
-    setShowEnd(true);
-
-    // Stagger honey reveals after modal is visible
-    [0, 1, 2].forEach((i) => {
-      if (i < stars) {
-        setTimeout(() => {
-          setHoneyEarned(prev => { const n = [...prev]; n[i] = true; return n; });
-          setTimeout(() => {
-            setHoneyPop(prev => { const n = [...prev]; n[i] = true; return n; });
-            setTimeout(() => setHoneyPop(prev => { const n = [...prev]; n[i] = false; return n; }), 600);
-          }, 20);
-        }, 600 + i * 450);
-      }
-    });
-
-    persistProgress(stars, g.score);
-  }, [persistProgress]);
+  if (endedRef.current) return;
+  endedRef.current = true;
+  const stars = calcStars(g.completed_sushi);
+  setFinalStars(stars);
+  setEndReason(reason);
+  setShowEnd(stars); // pass stars directly
+  persistProgress(stars, g.score);
+}, [persistProgress]);
 
   const tick = useCallback((ts) => {
     if (!lastTsRef.current) lastTsRef.current = ts;
@@ -744,6 +737,24 @@ export default function StackingGame() {
   }, [loadImages, tick]);
 
   useEffect(() => {
+  if (showEnd < 0) return;
+  setHoneyStars([false, false, false]);
+  const timeouts = [];
+  for (let idx = 0; idx < showEnd; idx++) {
+    const t = setTimeout(() => {
+      setHoneyStars(prev => {
+        const next = [...prev];
+        next[idx] = true;
+        return next;
+      });
+    }, 600 + idx * 450);
+    timeouts.push(t);
+  }
+  return () => timeouts.forEach(clearTimeout);
+}, [showEnd]);
+
+// Update all showEnd checks in JSX:
+  useEffect(() => {
     const down = (e) => {
       if (e.code === "ArrowLeft") keysRef.current.left = true;
       if (e.code === "ArrowRight") keysRef.current.right = true;
@@ -759,20 +770,20 @@ export default function StackingGame() {
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
   }, []);
 
+  
   const restart = () => {
-    endedRef.current = false;
-    setShowEnd(false);
-    setLives(3);
-    setTimeLeft(60);
-    setHoneyEarned([false, false, false]);
-    setHoneyPop([false, false, false]);
-    gameRef.current = new GameState();
-    lastTsRef.current = 0;
-    leftHoldRef.current = 0;
-    rightHoldRef.current = 0;
-    leftInitialRef.current = false;
-    rightInitialRef.current = false;
-  };
+  endedRef.current = false;
+  setShowEnd(-1);
+  setLives(3);
+  setTimeLeft(60);
+  setHoneyStars([false, false, false]);
+  gameRef.current = new GameState();
+  lastTsRef.current = 0;
+  leftHoldRef.current = 0;
+  rightHoldRef.current = 0;
+  leftInitialRef.current = false;
+  rightInitialRef.current = false;
+};
 
   const btnStyle = {
     padding: "14px 38px",
@@ -823,6 +834,7 @@ export default function StackingGame() {
           <span className="sg-hud-val">{hud.speed}</span>
         </div>
         <div className="sg-hud-block">
+
           <span className="sg-hud-label">Lives</span>
           <div style={{ display: "flex", alignItems: "center" }}>
             {[0, 1, 2].map(i => (
@@ -837,7 +849,7 @@ export default function StackingGame() {
         </div>
         <div className="sg-hud-block">
           <span className="sg-hud-label">Time</span>
-          <span className={`sg-hud-val${timeLeft <= 10 ? " danger" : timeLeft <= 20 ? " warn" : ""}`}>
+          <span className={`sg-hud-val${timeLeft <= 60 ? " danger" : timeLeft <= 20 ? " warn" : ""}`}>
             {Math.ceil(timeLeft)}s
           </span>
         </div>
@@ -865,6 +877,7 @@ export default function StackingGame() {
       </button>
 
       {/* ── Levels button ── */}
+      {/*}
       <button
         onClick={() => navigate("/level-selection")}
         style={{
@@ -882,8 +895,8 @@ export default function StackingGame() {
         onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
         onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
       >
-        ← Levels
-      </button>
+        ← 
+      </button> */}
 
       {/* ── Bottom hint pill ── */}
       <div style={{
@@ -940,7 +953,7 @@ export default function StackingGame() {
       </div>
 
       {/* ── Results screen — FishPrepGame style ── */}
-      {showEnd && (
+      {showEnd >= 0 && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 400,
           display: "flex", alignItems: "center", justifyContent: "center",
@@ -969,14 +982,15 @@ export default function StackingGame() {
             </div>
 
             {/* Honey jars */}
+            
             <div style={{ display: "flex", gap: "8px", justifyContent: "center", margin: "18px 0" }}>
-              {[0, 1, 2].map((i) => (
-                <div key={i} className={`honey${honeyPop[i] ? " pop" : ""}`}>
-                  <img src={honeyEarned[i] ? filledHoneyImg : blankHoneyImg} alt="" />
-                </div>
-              ))}
-            </div>
-
+  {[0, 1, 2].map((idx) => (
+    <div key={idx} className={`honey${honeyStars[idx] ? " earned" : ""}`}>
+      <img src={honeyStars[idx] ? filledHoneyImg : blankHoneyImg} alt="" />
+    </div>
+  ))}
+</div>
+            
             {/* Stats */}
             <div style={{ display: "flex", justifyContent: "center", gap: "24px", margin: "18px 0 16px", flexWrap: "wrap" }}>
               {[
@@ -1007,14 +1021,6 @@ export default function StackingGame() {
                 ← Level Menu
               </button>
               <button
-                onClick={restart}
-                onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
-                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-                style={{ ...btnStyle, backgroundColor: "#7FBF3F", color: "white" }}
-              >
-                Play Again ↺
-              </button>
-              <button
                 onClick={() => navigate("/level/4")}
                 onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
                 onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
@@ -1029,7 +1035,7 @@ export default function StackingGame() {
 
       {/* ── Settings panel ── */}
       {showSettings && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 550 }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 550, color: "#000"}}>
           <Settings onClose={() => setShowSettings(false)} />
         </div>
       )}
