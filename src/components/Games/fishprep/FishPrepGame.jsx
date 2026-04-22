@@ -24,7 +24,7 @@ import sliceSound from "../../../assets/sprites/fish-prep/slice.mp3";
 
 // speed fish sprites
 import redSnapperImg from "../../../assets/sprites/fish-prep/red_snapper.png";
-import mackerelImg from "../../../assets/sprites/fish-prep/Mackerel.png";
+import mackerelImg from "../../../assets/sprites/fish-prep/mackerel.png";
 import yellowfinImg from "../../../assets/sprites/fish-prep/Yellowfin.png";
 import tunaImg from "../../../assets/sprites/fish-prep/Tuna.png";
 import redsnapperBoneImg from "../../../assets/sprites/fish-prep/RedsnapperBone.png";
