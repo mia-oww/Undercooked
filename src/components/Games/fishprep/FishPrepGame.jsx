@@ -819,6 +819,8 @@ export default function FishPrepGame() {
         </button>
       </div>
 
+      
+
       {/* Hint bar */}
       {gameStarted && (
         <div style={{
