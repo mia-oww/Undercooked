@@ -487,7 +487,7 @@ export default function StackingGame() {
     return Promise.all(
       entries.map(([key, src]) =>
         new Promise((resolve) => {
-          const im = new Image();
+          const im = new Image(); 
           im.onload = () => resolve([key, im]);
           im.onerror = () => resolve([key, null]);
           im.src = src;

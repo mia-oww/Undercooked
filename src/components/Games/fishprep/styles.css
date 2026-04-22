@@ -1,3 +1,10 @@
+@keyframes fpPopupFade {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(0px); }
+  15%  { opacity: 1; transform: translateX(-50%) translateY(6px); }
+  70%  { opacity: 1; transform: translateX(-50%) translateY(10px); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(16px); }
+}
+
 :root{
   --bg: #e8e0d0;
   --hint-orange: #b85c20;
@@ -12,7 +19,6 @@ display:flex;
 justify-content:center;
 align-items:center;
 height:100vh;
-background: #e8e0d0;
 }
 .page{
   min-height: 100vh;
@@ -99,7 +105,7 @@ background: #e8e0d0;
 .scene{
   width: min(1000px, 95vw);
   aspect-ratio: 2048 / 1559;
-  background-image: url("../../../assets/sprites/fish-prep/background2.png"); 
+  background-image: url("../../../assets/sprites/fish-prep/background2.png");
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
@@ -327,6 +333,17 @@ background: #e8e0d0;
   pointer-events: none !important;
 }
 
+.knife-slicing-fast {
+  animation: knifeSlice 200ms ease-in-out forwards;
+  width: clamp(70px, 12vw, 120px) !important;
+  z-index: 30 !important;
+  pointer-events: none !important;
+}
+
+.fillet.fast {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
 @keyframes cutLineAppear {
   0%   { transform: translate(-50%, -50%) scaleX(0); opacity: 0; }
   40%  { transform: translate(-50%, -50%) scaleX(1); opacity: 0.9; }
@@ -371,4 +388,122 @@ background: #e8e0d0;
 
 img {
   color: transparent;
+}
+
+/* HUD — Score and Time */
+#fp-hud {
+  position: fixed; top: 14px; left: 0; right: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 10px; gap: 6px; background: none; pointer-events: none;
+}
+.fp-hud-block {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; min-width: 48px;
+  background: rgba(255,255,255,0.22);
+  backdrop-filter: blur(14px) saturate(1.6);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  border: 1px solid rgba(255,255,255,0.45); border-radius: 18px;
+  padding: 5px 10px 6px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5);
+  pointer-events: auto;
+}
+.fp-hud-label {
+  font-size: 0.5rem; letter-spacing: 1.5px; text-transform: uppercase;
+  color: rgba(255,255,255,0.75); font-weight: 800;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.35); white-space: nowrap;
+}
+.fp-hud-val {
+  font-family: 'Fredoka One', cursive; font-size: 1.4rem; line-height: 1.1;
+  color: #fff; transition: color 0.3s; text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+.fp-hud-val.urgent {
+  color: #ff6b6b; animation: fpTimerPulse 0.6s ease-in-out infinite;
+}
+@keyframes fpTimerPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+/* Countdown */
+@keyframes countdownPop {
+  0%   { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+  18%  { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+  70%  { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.75); opacity: 0; }
+}
+.countdown-num {
+  position: fixed;
+  top: 50%; left: 50%;
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(100px, 18vw, 180px);
+  color: #fff;
+  text-shadow: 0 6px 30px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.25);
+  pointer-events: none;
+  z-index: 160;
+  line-height: 1;
+  animation: countdownPop 0.88s cubic-bezier(.22,1.2,.36,1) forwards;
+}
+.countdown-go {
+  font-size: clamp(72px, 13vw, 130px);
+  color: #7FBF3F;
+  text-shadow: 0 6px 30px rgba(0,0,0,0.25), 0 2px 8px rgba(127,191,63,0.4);
+  animation: countdownPop 0.65s cubic-bezier(.22,1.2,.36,1) forwards;
+}
+
+/* Scene shake during mash — intensity driven by --shake-px custom property */
+@keyframes sceneMashShake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  20%  { transform: translate(calc(var(--shake-px, 4px) * -1), calc(var(--shake-px, 4px) * 0.4)) rotate(-0.35deg); }
+  40%  { transform: translate(var(--shake-px, 4px), calc(var(--shake-px, 4px) * -0.5)) rotate(0.35deg); }
+  60%  { transform: translate(calc(var(--shake-px, 4px) * -0.6), calc(var(--shake-px, 4px) * 0.6)) rotate(-0.2deg); }
+  80%  { transform: translate(calc(var(--shake-px, 4px) * 0.5), calc(var(--shake-px, 4px) * -0.3)) rotate(0.2deg); }
+}
+.scene-mash {
+  animation: sceneMashShake 0.16s ease-in-out forwards;
+}
+
+/* White flash when knife is freed */
+@keyframes flashFade {
+  0%   { opacity: 0.65; }
+  100% { opacity: 0; }
+}
+.stuck-free-flash {
+  position: fixed; inset: 0;
+  background: white;
+  pointer-events: none;
+  z-index: 998;
+  animation: flashFade 0.38s ease-out forwards;
+}
+
+/* Mash sparks */
+@keyframes sparkFly {
+  0%   { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0.15); opacity: 0; }
+}
+
+/* Knife-stuck mash event */
+@keyframes knifeStuckWobble {
+  0%, 100% { transform: translate(-50%, -62%) rotate(-10deg) scaleX(-1); }
+  30%       { transform: translate(-48%, -64%) rotate(-8deg)  scaleX(-1); }
+  70%       { transform: translate(-52%, -60%) rotate(-12deg) scaleX(-1); }
+}
+.knife-stuck {
+  animation: knifeStuckWobble 0.3s ease-in-out infinite !important;
+  width: clamp(70px, 12vw, 120px) !important;
+  z-index: 30 !important;
+  pointer-events: none !important;
+  /* override any inline transition from dragging */
+  transition: none !important;
+}
+
+@keyframes fishMashShake {
+  0%   { margin-left:  0;    margin-top:  0; }
+  20%  { margin-left: -6px;  margin-top:  3px; }
+  40%  { margin-left:  6px;  margin-top: -3px; }
+  60%  { margin-left: -4px;  margin-top:  2px; }
+  80%  { margin-left:  4px;  margin-top: -1px; }
+  100% { margin-left:  0;    margin-top:  0; }
+}
+.fish-mash-shake {
+  animation: fishMashShake 0.14s ease-in-out forwards;
 }

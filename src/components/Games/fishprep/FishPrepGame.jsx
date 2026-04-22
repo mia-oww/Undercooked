@@ -7,6 +7,7 @@ import { supabase } from "../../../supabase";
 import LoadingScreen from "../../../LoadingScreen"; // LOADING SCREEN IF IT TAKES FOREVER TO LOAD
 
 import backgroundImg from "../../../assets/sprites/fish-prep/background2.png";
+import pageBgImg from "../../../assets/trees_background1.png";
 import deadfishImg from "../../../assets/sprites/fish-prep/deadfish.png";
 import filletImg from "../../../assets/sprites/fish-prep/fillet.png";
 import bonefishImg from "../../../assets/sprites/fish-prep/fishbone2.png";
@@ -19,6 +20,50 @@ import blankHoneyImg from "../../../assets/sprites/fish-prep/blankhoney.png";
 import filledHoneyImg from "../../../assets/sprites/fish-prep/honey2.png";
 import settingsCogImg from "../../../assets/settings_cog.png";
 import wavingBearImg from "../../../assets/sprites/river-game-sprites/wavingbear.png";
+import sliceSound from "../../../assets/sprites/fish-prep/slice.mp3";
+
+// speed fish sprites
+import redSnapperImg from "../../../assets/sprites/fish-prep/red_snapper.png";
+import mackerelImg from "../../../assets/sprites/fish-prep/Mackerel.png";
+import yellowfinImg from "../../../assets/sprites/fish-prep/Yellowfin.png";
+import tunaImg from "../../../assets/sprites/fish-prep/Tuna.png";
+import redsnapperBoneImg from "../../../assets/sprites/fish-prep/RedsnapperBone.png";
+import redsnapperTailImg from "../../../assets/sprites/fish-prep/RedsnapperTail.png";
+import mackerelBoneImg from "../../../assets/sprites/fish-prep/MackerelBone.png";
+import mackerelTailImg from "../../../assets/sprites/fish-prep/MackerelTail.png";
+import yellowfinBoneImg from "../../../assets/sprites/fish-prep/YellowfinBone.png";
+import yellowfinTailImg from "../../../assets/sprites/fish-prep/YellowfinTail.png";
+import tunaBoneImg from "../../../assets/sprites/fish-prep/TunaBone.png";
+import tunaTailImg from "../../../assets/sprites/fish-prep/TunaTail.png";
+
+// Spawns small impact sparks at screen-space (x, y).
+// Done with raw DOM so there's no React re-render overhead during rapid mashing.
+function spawnSparks(x, y) {
+  const symbols = ["✦", "✸", "★", "✺", "·", "✷"];
+  const count = 6;
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement("span");
+    const angle = (360 / count) * i + (Math.random() * 40 - 20);
+    const dist  = 16 + Math.random() * 24;
+    const rad   = (angle * Math.PI) / 180;
+    const tx    = (Math.cos(rad) * dist).toFixed(1);
+    const ty    = (Math.sin(rad) * dist).toFixed(1);
+    el.textContent = symbols[i % symbols.length];
+    el.style.cssText = `
+      position:fixed;
+      left:${x}px; top:${y}px;
+      font-size:${9 + Math.random() * 7}px;
+      color:${Math.random() > 0.4 ? "#fff" : "#ffe066"};
+      pointer-events:none;
+      z-index:999;
+      transform:translate(-50%,-50%);
+      --tx:${tx}px; --ty:${ty}px;
+      animation:sparkFly 0.38s ease-out forwards;
+    `;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 420);
+  }
+}
 
 const BASE_W = 2048;
 const BASE_H = 1559;
@@ -48,6 +93,8 @@ const TRAY_CX = 1576;
 const COMPOST_CY = 764;
 const RECYCLE_CY = 1007;
 const TRASH_CY = 1249;
+const BOTTOM_SLOT_CX = 1579;
+const BOTTOM_SLOT_CY = 1247.5;
 
 const INTRO_DIALOGUE = [
   { speaker: "Bear", text: "Great work out there! We caught some amazing fish from the river today!" },
@@ -57,10 +104,29 @@ const INTRO_DIALOGUE = [
   { speaker: "Narrator", text: "Once cut, sort the fish bones and tail into the compost bin. Zero waste, maximum sustainability! ♻️" },
 ];
 
-const currentLevelId = 2; // Assuming this is level 2
+const currentLevelId = 2;
+
+
+// mid dialogue
+const MID_DIALOGUE = [
+  { speaker: "Narrator", text: "Nice work! Now you know what to expect." },
+  { speaker: "Narrator", text: "Let's turn up the heat! Prep as many fish as you can before the timer runs out. They'll come one after another — stay sharp!" },
+];
+
+// all fish including og salmon
+const ALL_FISH = [
+  { id: "mackerel",   fish: mackerelImg,   bone: mackerelBoneImg,   tail: mackerelTailImg,   name: "Mackerel",    transform: "translateX(11px) translateY(-7px) translate(-50%,-50%) rotate(-24deg) scaleY(1.24) scaleX(-1.30)", boneScale: 1.0, tailScale: 1.0, boneRotate: -24, tailRotate: -24 },
+  { id: "yellowfin",  fish: yellowfinImg,  bone: yellowfinBoneImg,  tail: yellowfinTailImg,  name: "Yellowfin",   transform: "translateX(30px) translate(-50%,-50%) rotate(15deg) scaleY(1.47) scaleX(-1.55)", boneScale: 0.9, tailScale: 0.9, boneRotate: 15, tailRotate: 15, boneOffsetX: 15, tailOffsetY: -27, tailOffsetX: -4 },
+  { id: "tuna",       fish: tunaImg,       bone: tunaBoneImg,       tail: tunaTailImg,       name: "Tuna",        transform: "translate(-50%,-50%) rotate(15deg) scaleY(1.75) scaleX(-1.85)", boneScale: 1.3, tailScale: 1.6, boneOffsetX: 25, tailOffsetX: 22, boneRotate: 45, tailRotate: 45 },
+  { id: "redsnapper", fish: redSnapperImg, bone: redsnapperBoneImg, tail: redsnapperTailImg, name: "Red Snapper", transform: "translate(-50%,-50%) rotate(0deg) scaleY(1.4) scaleX(-1.4)",  boneScale: 0.9, tailScale: 0.9, boneOffsetY: -8, tailOffsetY: -8 },
+  { id: "salmon",     fish: deadfishImg,   bone: bonefishImg,       tail: fishtailImg,       name: "Salmon",      transform: "translate(-50%,-50%) rotate(15deg) scaleY(0.85) scaleX(0.9)",  boneScale: 1.0, tailScale: 1.0 },
+];
 
 export default function FishPrepGame() {
   const navigate = useNavigate();
+  const debugMode = new URLSearchParams(window.location.search).get("debug") === "1";
+  const skipTutorialMode = new URLSearchParams(window.location.search).get("skip") === "1";
+  const [debugFishIndex, setDebugFishIndex] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [showResults, setShowResults] = useState(false);
@@ -81,8 +147,44 @@ export default function FishPrepGame() {
   const [knifeCutting, setKnifeCutting] = useState(false);
   const [filletVisible, setFilletVisible] = useState(false);
   const [honeyStars, setHoneyStars] = useState([false, false, false]);
+  const [score, setScore] = useState(0);
+  const [scorePopup, setScorePopup] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [gamePhase, setGamePhase] = useState("tutorial");
+  const [midDialogueIndex, setMidDialogueIndex] = useState(0);
+  const [fishPrepped, setFishPrepped] = useState(0);
+  const [activeFishImg, setActiveFishImg] = useState(deadfishImg);
+  const activeFishImgRef = useRef(deadfishImg);
+  const [activeBoneImg, setActiveBoneImg] = useState(bonefishImg);
+  const [activeTailImg, setActiveTailImg] = useState(fishtailImg);
+  const [activeFishTransform, setActiveFishTransform] = useState(ALL_FISH[0].transform);
+  const [activeBoneScale, setActiveBoneScale] = useState(1.0);
+  const [activeTailScale, setActiveTailScale] = useState(1.0);
+  const [activeBoneOffsetY, setActiveBoneOffsetY] = useState(0);
+  const [activeTailOffsetY, setActiveTailOffsetY] = useState(0);
+  const [activeBoneOffsetX, setActiveBoneOffsetX] = useState(0);
+  const [activeTailOffsetX, setActiveTailOffsetX] = useState(0);
+  const [activeBoneRotate, setActiveBoneRotate] = useState(0);
+  const [activeTailRotate, setActiveTailRotate] = useState(0);
+  const [canSkipTutorial, setCanSkipTutorial] = useState(skipTutorialMode);
+  const [fishLoadKey, setFishLoadKey] = useState(0);
+  const [countdown, setCountdown] = useState(null);
+  const [knifeStuck, setKnifeStuck] = useState(false);
+  const [stuckClickCount, setStuckClickCount] = useState(0);
 
   const [loading, setLoading] = useState(true);
+
+  // Preload all fish images so the browser decodes them during the tutorial.
+  // Without this, the first speed-round fish triggers a download/decode on first
+  // display, causing the old image to flash for one frame before the new one appears.
+  useEffect(() => {
+    ALL_FISH.forEach(({ fish, bone, tail }) => {
+      [fish, bone, tail].forEach(src => {
+        const img = new Image();
+        img.src = src;
+      });
+    });
+  }, []);
 
   const sceneRef = useRef(null);
   const stageRef = useRef("grab_fish");
@@ -111,6 +213,17 @@ export default function FishPrepGame() {
   const zoneTrashRef = useRef(null);
   const zoneFishtrayRef = useRef(null);
   const cutLineRef = useRef(null);
+  const gamePhaseRef = useRef("tutorial");
+  const fishPreppedRef = useRef(0);
+  const fishStartTimeRef = useRef(null);
+  const loadNextFishRef = useRef(null);
+  const tutorialStarsRef = useRef(3);
+  const totalSortsRef = useRef(0);
+  const wrongSortsRef = useRef(0);
+  const binOrderRef = useRef({ compost: COMPOST_CY, recycle: RECYCLE_CY, trash: TRASH_CY });
+  const knifeStuckRef = useRef(false);
+  const stuckClicksRef = useRef(0);
+  const speedFishCountRef = useRef(0);
   const dot0 = useRef(null);
   const dot1 = useRef(null);
   const dot2 = useRef(null);
@@ -205,12 +318,15 @@ export default function FishPrepGame() {
     if (knifeRef.current)
       knifeRef.current.style.display = currentStage === "initial" ? "block" : "none";
 
-    placeBin(compostBinRef.current, TRAY_CX, COMPOST_CY);
-    placeBin(recycleBinRef.current, TRAY_CX, RECYCLE_CY);
-    placeBin(trashBinRef.current, TRAY_CX, TRASH_CY);
-    placeZone(zoneCompostRef.current, TRAY_CX, COMPOST_CY, 110, 110);
-    placeZone(zoneRecycleRef.current, TRAY_CX, RECYCLE_CY, 110, 110);
-    placeZone(zoneTrashRef.current, TRAY_CX, TRASH_CY, 110, 110);
+    const bo = binOrderRef.current;
+    const cxFor = (cy) => cy === TRASH_CY ? BOTTOM_SLOT_CX : TRAY_CX;
+    const cyFor = (cy) => cy === TRASH_CY ? BOTTOM_SLOT_CY : cy;
+    placeBin(compostBinRef.current, cxFor(bo.compost), cyFor(bo.compost));
+    placeBin(recycleBinRef.current, cxFor(bo.recycle), cyFor(bo.recycle));
+    placeBin(trashBinRef.current,   cxFor(bo.trash),   cyFor(bo.trash));
+    placeZone(zoneCompostRef.current, cxFor(bo.compost) - 30, cyFor(bo.compost), 200, 160);
+    placeZone(zoneRecycleRef.current, cxFor(bo.recycle) - 30, cyFor(bo.recycle), 200, 160);
+    placeZone(zoneTrashRef.current,   cxFor(bo.trash)   - 30, cyFor(bo.trash),   200, 160);
 
     if (zoneFishtrayRef.current) {
       zoneFishtrayRef.current.style.left = `${sx(TRAY_ZONE_X)}px`;
@@ -244,12 +360,36 @@ export default function FishPrepGame() {
 
   const checkAllSorted = useCallback(() => {
     if (bonefishTossedRef.current && fishtailTossedRef.current) {
+      const delay = gamePhaseRef.current === "speed_round" ? 400 : 1500;
       setTimeout(() => {
         setStage("fillet_done");
         setFilletVisible(true);
-        if (sustainabilityRef.current === 3) hint_("Perfect! All waste composted!", true);
-        setTimeout(() => setShowResults(true), 2800);
-      }, 1500);
+
+        if (gamePhaseRef.current === "tutorial") {
+          tutorialStarsRef.current = sustainabilityRef.current;
+          if (sustainabilityRef.current === 3) hint_("Perfect! All waste composted!", true);
+          setTimeout(() => {
+            gamePhaseRef.current = "mid_dialogue";
+            setGamePhase("mid_dialogue");
+            setMidDialogueIndex(0);
+            setFilletVisible(false);
+            if (deadfishRef.current) deadfishRef.current.style.opacity = "0";
+          }, 1800);
+        } else {
+          fishPreppedRef.current += 1;
+          setFishPrepped(fishPreppedRef.current);
+          const elapsed = fishStartTimeRef.current ? (Date.now() - fishStartTimeRef.current) / 1000 : 99;
+          const speedBonus = elapsed < 5 ? 15 : elapsed <= 10 ? 8 : 0;
+          const points = 20 + speedBonus;
+          setScore((prev) => prev + points);
+          if (speedBonus > 0) {
+            setScorePopup(`+${speedBonus} Speed Bonus!`);
+            setTimeout(() => setScorePopup(null), 1800);
+          }
+          hint_("Nice! Next fish!", true);
+          setTimeout(() => loadNextFishRef.current?.(), 600);
+        }
+      }, delay);
     }
   }, [setStage, hint_]);
 
@@ -258,6 +398,30 @@ export default function FishPrepGame() {
     initPositions();
     placeSprites();
   }, [initPositions, placeSprites]);
+
+
+  // debug
+  useEffect(() => {
+    if (!debugMode) return;
+    const fish = ALL_FISH[debugFishIndex];
+    activeFishImgRef.current = fish.fish;
+    setActiveFishImg(fish.fish);
+    setActiveBoneImg(fish.bone);
+    setActiveTailImg(fish.tail);
+    setActiveFishTransform(fish.transform);
+    setActiveBoneScale(fish.boneScale ?? 1.0);
+    setActiveTailScale(fish.tailScale ?? 1.0);
+    setActiveBoneOffsetY(fish.boneOffsetY ?? 0);
+    setActiveTailOffsetY(fish.tailOffsetY ?? 0);
+    setActiveBoneOffsetX(fish.boneOffsetX ?? 0);
+    setActiveTailOffsetX(fish.tailOffsetX ?? 0);
+    setActiveBoneRotate(fish.boneRotate ?? 0);
+    setActiveTailRotate(fish.tailRotate ?? 0);
+    setGameStarted(true);
+    setStage("initial");
+    initPositions();
+    placeSprites();
+  }, [debugMode, debugFishIndex, initPositions, placeSprites, setStage]);
 
   useEffect(() => {
     initPositions();
@@ -311,37 +475,58 @@ export default function FishPrepGame() {
         const hit = Math.abs(knifePosRef.current.x - fishCX) <= sx(HIT_PAD_X) &&
                     Math.abs(knifePosRef.current.y - fishCY) <= sy(HIT_PAD_Y);
 
+        const isSalmon = activeFishImgRef.current === deadfishImg;
+
         if (hit && !fishDodgedRef.current) {
           fishDodgedRef.current = true;
-          draggingRef.current = null;
-          setDragging(null);
-
-          const fish = deadfishRef.current;
-          if (fish) {
-            fish.style.transition = "transform 100ms ease";
-            const flops = [
-              [100, "translate(-50%,-50%) rotate(15deg) scaleY(0.85)"],
-              [200, "translate(-50%,-50%) rotate(-12deg) scaleY(1.15) scaleX(0.9)"],
-              [300, "translate(-50%,-50%) rotate(10deg) scaleY(0.8) scaleX(1.1)"],
-              [400, "translate(-50%,-50%) rotate(-8deg) scaleY(1.1)"],
-              [500, "translate(-50%,-50%) rotate(3deg) scaleY(0.95)"],
-              [600, "translate(-50%,-50%) rotate(0deg) scaleY(1)"],
-            ];
-            flops.forEach(([delay, transform]) => {
-              setTimeout(() => {
-                if (fish) fish.style.transform = transform;
-                if (delay === 600) fish.style.transition = "none";
-              }, delay);
-            });
+          if (isSalmon) {
+            draggingRef.current = null;
+            setDragging(null);
+            const fish = deadfishRef.current;
+            if (fish) {
+              fish.style.transition = "transform 100ms ease";
+              const flops = [
+                [100, "translate(-50%,-50%) rotate(15deg) scaleY(0.85)"],
+                [200, "translate(-50%,-50%) rotate(-12deg) scaleY(1.15) scaleX(0.9)"],
+                [300, "translate(-50%,-50%) rotate(10deg) scaleY(0.8) scaleX(1.1)"],
+                [400, "translate(-50%,-50%) rotate(-8deg) scaleY(1.1)"],
+                [500, "translate(-50%,-50%) rotate(3deg) scaleY(0.95)"],
+                [600, "translate(-50%,-50%) rotate(0deg) scaleY(1)"],
+              ];
+              flops.forEach(([delay, transform]) => {
+                setTimeout(() => {
+                  if (fish) fish.style.transform = transform;
+                  if (delay === 600) fish.style.transition = "none";
+                }, delay);
+              });
+            }
+            knifePosRef.current = { x: sx(KNIFE_INIT_X), y: sy(KNIFE_INIT_Y) };
+            hint_("Looks like there's still some life in the fella. Don't be shy, try again!");
+            placeSprites();
+            return;
           }
-
-          knifePosRef.current = { x: sx(KNIFE_INIT_X), y: sy(KNIFE_INIT_Y) };
-          hint_("Looks like there's still some life in the fella. Don't be shy, try again!");
-          placeSprites();
-          return;
         }
 
         if (hit && fishDodgedRef.current) {
+          // Every 3rd speed-round fish: knife gets stuck — mash to free it
+          if (gamePhaseRef.current === "speed_round" && speedFishCountRef.current % 3 === 0) {
+            draggingRef.current = null;
+            setDragging(null);
+            knifeStuckRef.current = true;
+            setKnifeStuck(true);
+            stuckClicksRef.current = 0;
+            setStuckClickCount(0);
+            const knife = knifeRef.current;
+            if (knife) {
+              knife.style.display = "block";
+              knife.style.left = `${fishCX}px`;
+              knife.style.top = `${fishCY}px`;
+              knife.classList.add("knife-stuck");
+            }
+            hint_("The knife is stuck! Mash click to free it!");
+            return;
+          }
+
           knifeCuttingRef.current = true;
           setKnifeCutting(true);
           draggingRef.current = null;
@@ -350,20 +535,27 @@ export default function FishPrepGame() {
 
           const knife = knifeRef.current;
           const cutLine = cutLineRef.current;
+          const fast = gamePhaseRef.current === "speed_round";
           if (knife) {
             knife.style.display = "block";
             knife.style.left = `${fishCX}px`;
             knife.style.top = `${fishCY}px`;
-            knife.classList.add("knife-slicing");
+            knife.classList.add(fast ? "knife-slicing-fast" : "knife-slicing");
           }
+          const sfx = new Audio(sliceSound);
+          sfx.volume = 0.45;
+          sfx.play();
           if (cutLine) {
             cutLine.style.left = `${fishCX}px`;
             cutLine.style.top = `${fishCY}px`;
-            setTimeout(() => cutLine.classList.add("visible"), 250);
+            setTimeout(() => cutLine.classList.add("visible"), fast ? 80 : 250);
           }
 
           setTimeout(() => {
-            if (knife) knife.classList.remove("knife-slicing");
+            if (knife) {
+              knife.classList.remove("knife-slicing");
+              knife.classList.remove("knife-slicing-fast");
+            }
             if (cutLine) cutLine.classList.remove("visible");
             knifePosRef.current = { x: sx(KNIFE_INIT_X), y: sy(KNIFE_INIT_Y) };
             bonePosRef.current = { x: sx(BONE_INIT_X), y: sy(BONE_INIT_Y) };
@@ -375,7 +567,7 @@ export default function FishPrepGame() {
             setFishtailVisible(true);
             hint_("Sort the fish waste into the correct bin!");
             placeSprites();
-          }, 800);
+          }, fast ? 350 : 800);
           return;
         }
 
@@ -398,11 +590,14 @@ export default function FishPrepGame() {
           bonefishTossedRef.current = true;
           setBonefishTossed(true);
           setBonefishVisible(false);
+          totalSortsRef.current += 1;
           if (overCompost) {
             triggerGlow("compost", true);
+            if (gamePhaseRef.current === "speed_round") setScore((prev) => prev + 10);
             hint_("Bones in compost — nice!", true);
           } else {
-            sustainabilityRef.current -= 1;
+            wrongSortsRef.current += 1;
+            sustainabilityRef.current = Math.max(0, sustainabilityRef.current - 1);
             setSustainabilityScore(sustainabilityRef.current);
             triggerGlow(overRecycle ? "recycle" : "trash", false);
             hint_("Fish bones should go in compost... cmon now");
@@ -432,11 +627,14 @@ export default function FishPrepGame() {
           fishtailTossedRef.current = true;
           setFishtailTossed(true);
           setFishtailVisible(false);
+          totalSortsRef.current += 1;
           if (overCompost) {
             triggerGlow("compost", true);
+            if (gamePhaseRef.current === "speed_round") setScore((prev) => prev + 10);
             hint_("Tail in compost, NICE!", true);
           } else {
-            sustainabilityRef.current -= 1;
+            wrongSortsRef.current += 1;
+            sustainabilityRef.current = Math.max(0, sustainabilityRef.current - 1);
             setSustainabilityScore(sustainabilityRef.current);
             triggerGlow(overRecycle ? "recycle" : "trash", false);
             hint_("HEY! The fish tail should go in compost!");
@@ -475,8 +673,12 @@ export default function FishPrepGame() {
   useEffect(() => {
     if (!showResults) return;
 
-    const stars = sustainabilityRef.current;
-    const actualScore = stars * 130;
+    const total = totalSortsRef.current;
+    const wrong = wrongSortsRef.current;
+    const ratio = total === 0 ? 1 : (total - wrong) / total;
+    const stars = wrong === 0 ? 3 : ratio >= 0.7 ? 2 : 1;
+    tutorialStarsRef.current = stars;
+    const actualScore = score;
 
     setHoneyStars([false, false, false]);
     [0, 1, 2].forEach((i) => {
@@ -545,7 +747,7 @@ export default function FishPrepGame() {
     }
 
     saveProgress();
-  }, [showResults]);
+  }, [showResults, score]);
 
   useEffect(() => {
   async function checkSkipIntro() {
@@ -559,6 +761,7 @@ export default function FishPrepGame() {
           .single();
         if (!error && profile?.level > currentLevelId) {
           startGame();
+          setCanSkipTutorial(true);
           setIntroReady(true);
           setLoading(false);
           return;
@@ -572,6 +775,194 @@ export default function FishPrepGame() {
   }
   checkSkipIntro();
 }, [currentLevelId, startGame]);
+
+  // speed round
+  const loadNextSpeedFish = useCallback(() => {
+    // Hide immediately so nothing stale shows while React re-renders
+    if (deadfishRef.current) deadfishRef.current.style.display = "none";
+    if (filletRef.current)   filletRef.current.style.display   = "none";
+    speedFishCountRef.current += 1;
+
+    const fish = ALL_FISH[Math.floor(Math.random() * ALL_FISH.length)];
+    const positions = [COMPOST_CY, RECYCLE_CY, TRASH_CY];
+    for (let i = positions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [positions[i], positions[j]] = [positions[j], positions[i]];
+    }
+    binOrderRef.current = { compost: positions[0], recycle: positions[1], trash: positions[2] };
+    activeFishImgRef.current = fish.fish;
+    setActiveFishImg(fish.fish);
+    setActiveBoneImg(fish.bone);
+    setActiveTailImg(fish.tail);
+    setActiveFishTransform(fish.transform ?? ALL_FISH[0].transform);
+    setActiveBoneScale(fish.boneScale ?? 1.0);
+    setActiveTailScale(fish.tailScale ?? 1.0);
+    setActiveBoneOffsetY(fish.boneOffsetY ?? 0);
+    setActiveTailOffsetY(fish.tailOffsetY ?? 0);
+    setActiveBoneOffsetX(fish.boneOffsetX ?? 0);
+    setActiveTailOffsetX(fish.tailOffsetX ?? 0);
+    setActiveBoneRotate(fish.boneRotate ?? 0);
+    setActiveTailRotate(fish.tailRotate ?? 0);
+    bonefishTossedRef.current = false;
+    fishtailTossedRef.current = false;
+    setBonefishTossed(false);
+    setFishtailTossed(false);
+    setBonefishVisible(true);
+    setFishtailVisible(true);
+    setFilletVisible(false);
+    setStage("initial");
+    initPositions();
+    setFishLoadKey((k) => k + 1);
+    fishStartTimeRef.current = Date.now();
+    hint_("Slice the fish!");
+  }, [setStage, hint_, initPositions]);
+
+
+  useEffect(() => {
+    loadNextFishRef.current = loadNextSpeedFish;
+  }, [loadNextSpeedFish]);
+
+  // Runs the 3-2-1-GO countdown then kicks off the speed round.
+  // The dark overlay rendered whenever countdown !== null hides the scene
+  // so no stale tutorial state can flash through.
+  const startSpeedRound = useCallback(() => {
+    if (deadfishRef.current) deadfishRef.current.style.display = "none";
+    if (filletRef.current)   filletRef.current.style.display   = "none";
+    speedFishCountRef.current = 0;
+    setGamePhase("countdown");
+    gamePhaseRef.current = "countdown";
+    setCountdown(3);
+    setTimeout(() => setCountdown(2), 1000);
+    setTimeout(() => setCountdown(1), 2000);
+    setTimeout(() => setCountdown("GO"), 3000);
+    setTimeout(() => {
+      setCountdown(null);
+      gamePhaseRef.current = "speed_round";
+      setGamePhase("speed_round");
+      loadNextFishRef.current?.();
+    }, 3700);
+  }, []);
+
+  const STUCK_CLICKS_NEEDED = 10;
+
+  const handleStuckMash = useCallback(() => {
+    if (!knifeStuckRef.current) return;
+
+    // Shake the fish on every click
+    const fish = deadfishRef.current;
+    if (fish) {
+      fish.classList.remove("fish-mash-shake");
+      void fish.offsetWidth;
+      fish.classList.add("fish-mash-shake");
+    }
+
+    stuckClicksRef.current += 1;
+    setStuckClickCount(stuckClicksRef.current);
+
+    const progress = stuckClicksRef.current / STUCK_CLICKS_NEEDED;
+
+    // Sparks at knife blade + wobble accelerates as bar fills
+    const knife = knifeRef.current;
+    if (knife) {
+      const r = knife.getBoundingClientRect();
+      spawnSparks(r.left + r.width / 2, r.top + r.height * 0.65);
+      const dur = Math.max(0.12, 0.3 - progress * 0.18);
+      knife.style.animationDuration = `${dur}s`;
+    }
+
+    // Scene shake — gets bigger as bar fills (2 px → 7 px swing)
+    if (sceneRef.current) {
+      const intensity = Math.round(2 + progress * 5);
+      sceneRef.current.style.setProperty("--shake-px", `${intensity}px`);
+      sceneRef.current.classList.remove("scene-mash");
+      void sceneRef.current.offsetWidth;
+      sceneRef.current.classList.add("scene-mash");
+    }
+
+    // Hint escalates in three stages
+    if (progress < 0.4)       hint_("The knife is stuck! Mash to free it!");
+    else if (progress < 0.8)  hint_("Keep going! Almost there…");
+    else                      hint_("ALMOST FREE — PULL IT OUT!");
+
+    if (stuckClicksRef.current < STUCK_CLICKS_NEEDED) return;
+
+    // Knife freed! Flash the screen
+    const flash = document.createElement("div");
+    flash.className = "stuck-free-flash";
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 400);
+
+    knifeStuckRef.current = false;
+    setKnifeStuck(false);
+
+    if (knife) knife.classList.remove("knife-stuck");
+
+    // Perform the fast slice
+    const fishCX = sx(BOARD_CX);
+    const fishCY = sy(BOARD_CY);
+    const cutLine = cutLineRef.current;
+
+    knifeCuttingRef.current = true;
+    setKnifeCutting(true);
+    hint_("Slicing…");
+
+    if (knife) {
+      knife.style.display = "block";
+      knife.style.left = `${fishCX}px`;
+      knife.style.top = `${fishCY}px`;
+      knife.classList.add("knife-slicing-fast");
+    }
+    const sfx = new Audio(sliceSound);
+    sfx.volume = 0.45;
+    sfx.play();
+    if (cutLine) {
+      cutLine.style.left = `${fishCX}px`;
+      cutLine.style.top = `${fishCY}px`;
+      setTimeout(() => cutLine.classList.add("visible"), 80);
+    }
+
+    setTimeout(() => {
+      if (knife) {
+        knife.classList.remove("knife-slicing-fast");
+      }
+      if (cutLine) cutLine.classList.remove("visible");
+      knifePosRef.current = { x: sx(KNIFE_INIT_X), y: sy(KNIFE_INIT_Y) };
+      bonePosRef.current  = { x: sx(BONE_INIT_X),  y: sy(BONE_INIT_Y)  };
+      tailPosRef.current  = { x: sx(TAIL_INIT_X),  y: sy(TAIL_INIT_Y)  };
+      knifeCuttingRef.current = false;
+      setKnifeCutting(false);
+      setStage("fish_cut");
+      setBonefishVisible(true);
+      setFishtailVisible(true);
+      hint_("Sort the fish waste into the correct bin!");
+      placeSprites();
+    }, 350);
+  }, [sx, sy, setStage, hint_, placeSprites]);
+
+  // After React commits the new fish src, show it. fishLoadKey always increments
+  // so this fires even when the same fish is picked twice in a row.
+  useEffect(() => {
+    if (fishLoadKey === 0) return;
+    if (gamePhaseRef.current !== "speed_round") return;
+    initPositions();
+    placeSprites();
+  }, [fishLoadKey, initPositions, placeSprites]);
+
+  // timer
+  useEffect(() => {
+    if (gamePhase !== "speed_round") return;
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setShowResults(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [gamePhase]);
 
   const onFishtrayPointerDown = (e) => {
     if (stageRef.current !== "grab_fish") return;
@@ -644,10 +1035,18 @@ export default function FishPrepGame() {
     if (dialogueIndex > 0) setDialogueIndex((i) => i - 1);
   };
 
+  const handleMidDialogueNext = () => {
+    if (midDialogueIndex < MID_DIALOGUE.length - 1) {
+      setMidDialogueIndex((i) => i + 1);
+    } else {
+      startSpeedRound();
+    }
+  };
+
   const messages = {
-    3: "Perfect! You composted all the fish waste. Great sustainability practice!",
-    2: "Almost! One piece went to the wrong bin. Fish waste belongs in compost!",
-    1: "Both pieces went to the wrong bins. Remember: fish waste is compostable!",
+    3: "Perfect Score! WOW. ALL pieces went into the correct bins!",
+    2: "Some pieces went into the wrong bins!",
+    1: "Some pieces went into the wrong bins!",
   };
 
   const btnStyle = {
@@ -739,36 +1138,36 @@ export default function FishPrepGame() {
   };
 
   return (
-    <div className="page">
+    <div className="page" style={{ backgroundImage: `url(${pageBgImg})`, backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }}>
       <LoadingScreen isLoading={loading} />
       <div id="scene" className="scene" ref={sceneRef}
         style={{ backgroundImage: `url(${backgroundImg})` }}>
 
         <div ref={zoneFishtrayRef} className="fishTrayZone" onPointerDown={onFishtrayPointerDown} />
 
-        <img ref={deadfishRef} id="deadfish" className="sprite" src={deadfishImg} draggable="false"
-          style={{ display: "none", transform: "translate(-50%,-50%) rotate(15deg) scaleY(0.85) scaleX(0.9)"}}
+        <img ref={deadfishRef} id="deadfish" className="sprite" src={activeFishImg} draggable="false"
+          style={{ display: "none", transform: ALL_FISH.find(f => f.fish === activeFishImg)?.transform ?? activeFishTransform }}
           />
         <div ref={cutLineRef} id="cut-line" className="cut-line" />
-        <img ref={filletRef} id="fillet" className={`sprite fillet${filletVisible ? " visible" : ""}`}
+        <img ref={filletRef} id="fillet" className={`sprite fillet${filletVisible ? " visible" : ""}${gamePhase === "speed_round" ? " fast" : ""}`}
           src={filletImg} draggable="false"
           style={{ display: filletVisible ? "block" : "none" }} />
 
-        <img ref={bonefishRef} id="bonefish" className="sprite bonefish" src={bonefishImg}
+        <img ref={bonefishRef} id="bonefish" className="sprite bonefish" src={activeBoneImg}
           draggable="false" onPointerDown={onBonefishPointerDown}
           style={{
             display: (stage === "fish_cut" || stage === "fillet_done") && bonefishVisible ? "block" : "none",
             cursor: bonefishTossed ? "default" : dragging === "bonefish" ? "grabbing" : "grab",
-            transform: dragging === "bonefish" ? "translate(-50%,-50%) rotate(-6deg) scale(1.04)" : "translate(-50%,-50%)",
+            transform: dragging === "bonefish" ? `translate(calc(-50% + ${activeBoneOffsetX}px), calc(-50% + ${activeBoneOffsetY}px)) rotate(${activeBoneRotate - 6}deg) scale(${activeBoneScale * 1.04})` : `translate(calc(-50% + ${activeBoneOffsetX}px), calc(-50% + ${activeBoneOffsetY}px)) rotate(${activeBoneRotate}deg) scale(${activeBoneScale})`,
             filter: dragging === "bonefish" ? "drop-shadow(0 8px 16px rgba(0,0,0,0.35))" : "none",
           }} />
 
-        <img ref={fishtailRef} id="fishtail" className="sprite fishtail" src={fishtailImg}
+        <img ref={fishtailRef} id="fishtail" className="sprite fishtail" src={activeTailImg}
           draggable="false" onPointerDown={onFishtailPointerDown}
           style={{
             display: (stage === "fish_cut" || stage === "fillet_done") && fishtailVisible ? "block" : "none",
             cursor: fishtailTossed ? "default" : dragging === "fishtail" ? "grabbing" : "grab",
-            transform: dragging === "fishtail" ? "translate(-50%,-50%) rotate(5deg) scale(1.06)" : "translate(-50%,-50%)",
+            transform: dragging === "fishtail" ? `translate(calc(-50% + ${activeTailOffsetX}px), calc(-50% + ${activeTailOffsetY}px)) rotate(${activeTailRotate + 5}deg) scale(${activeTailScale * 1.06})` : `translate(calc(-50% + ${activeTailOffsetX}px), calc(-50% + ${activeTailOffsetY}px)) rotate(${activeTailRotate}deg) scale(${activeTailScale})`,
             filter: dragging === "fishtail" ? "drop-shadow(0 8px 16px rgba(0,0,0,0.35))" : "none",
           }} />
 
@@ -819,7 +1218,50 @@ export default function FishPrepGame() {
         </button>
       </div>
 
-      
+      {/* HUD — Score and Time */}
+      {gameStarted && (
+        <div id="fp-hud">
+          <div className="fp-hud-block">
+            <span className="fp-hud-label">Score</span>
+            <span className="fp-hud-val">{score}</span>
+            {scorePopup && (
+              <span style={{
+                position: "absolute", bottom: "-22px", left: "50%", transform: "translateX(-50%)",
+                background: "rgba(74,124,89,0.92)", color: "white", borderRadius: "20px",
+                padding: "2px 10px", fontSize: "clamp(10px,1.4vw,12px)", fontWeight: 700,
+                whiteSpace: "nowrap", pointerEvents: "none", fontFamily: "'Fredoka One', cursive",
+                animation: "fpPopupFade 1.8s ease forwards",
+              }}>{scorePopup}</span>
+            )}
+          </div>
+          <div className="fp-hud-block">
+            <span className="fp-hud-label">Fish Prepped</span>
+            <span className="fp-hud-val">{fishPrepped}</span>
+          </div>
+          <div className="fp-hud-block">
+            <span className="fp-hud-label">Time</span>
+            <span className={`fp-hud-val${timeLeft <= 10 ? " urgent" : ""}`}>
+              {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Skip tutorial button — only for returning players, only during tutorial phase */}
+      {gameStarted && canSkipTutorial && gamePhase === "tutorial" && (
+        <button
+          onClick={() => startSpeedRound()}
+          onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          style={{
+            ...btnStyle,
+            position: "fixed", top: "3%", right: "3%", zIndex: 60,
+            backgroundColor: "#e8e1cf", color: "#3d2e1e",
+            fontSize: "16px", padding: "10px 24px",
+          }}>
+          Skip Tutorial →
+        </button>
+      )}
 
       {/* Hint bar */}
       {gameStarted && (
@@ -962,6 +1404,124 @@ export default function FishPrepGame() {
         </div>
       )}
 
+      {/* mid dialogue */}
+      {gamePhase === "mid_dialogue" && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50 }} onClick={handleMidDialogueNext}>
+          <img src={wavingBearImg} alt="waving bear" style={{
+            position: "absolute", bottom: 0, left: "2%",
+            height: "55vh", maxHeight: "420px",
+            objectFit: "contain", zIndex: 1,
+            filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.2))",
+            pointerEvents: "none",
+          }} />
+          <div style={{
+            position: "absolute", bottom: "4%", left: "50%",
+            transform: "translateX(-50%)",
+            width: "72vw", maxWidth: "860px",
+            cursor: "pointer", zIndex: 2,
+          }}>
+            <div style={{
+              display: "inline-block", background: "#f5eedc",
+              border: "3px solid #c8b89a", borderBottom: "none",
+              borderRadius: "14px 14px 0 0", padding: "6px 22px",
+              fontFamily: "'Fredoka One', cursive", fontSize: "18px",
+              color: "#5a4a35", marginLeft: "24px",
+            }}>
+              {MID_DIALOGUE[midDialogueIndex].speaker}
+            </div>
+            <div style={{
+              background: "#fdf6e3", border: "3px solid #c8b89a",
+              borderRadius: "0 18px 18px 18px", padding: "24px 32px",
+              boxShadow: "0 8px 30px rgba(0,0,0,0.18)", textAlign: "left",
+            }}>
+              <p style={{
+                fontFamily: "'Fredoka One', cursive",
+                fontSize: "clamp(16px, 1.8vw, 22px)",
+                color: "#3d2e1e", margin: 0, lineHeight: 1.6, minHeight: "60px",
+              }}>
+                {MID_DIALOGUE[midDialogueIndex].text}
+              </p>
+              <div style={{ display: "flex", alignItems: "center", marginTop: "16px", gap: "10px" }}>
+                {MID_DIALOGUE.map((_, i) => (
+                  <div key={i} style={{
+                    width: i === midDialogueIndex ? "20px" : "8px",
+                    height: "8px", borderRadius: "999px",
+                    background: i === midDialogueIndex ? "#c8b89a" : "#e0d5c0",
+                    transition: "width 0.2s ease",
+                  }} />
+                ))}
+                <span style={{
+                  marginLeft: "auto", fontFamily: "'Fredoka One', cursive",
+                  fontSize: "14px", color: "#a08c72",
+                }}>
+                  {midDialogueIndex === MID_DIALOGUE.length - 1 ? "Let's go! ▶" : "Click to continue ▶"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Knife-stuck mash event */}
+      {knifeStuck && (
+        <>
+          {/* Full-screen click catcher — pointer-events only, no visual */}
+          <div
+            onPointerDown={handleStuckMash}
+            style={{ position: "fixed", inset: 0, zIndex: 22, cursor: "crosshair" }}
+          />
+          {/* Progress indicator */}
+          <div style={{
+            position: "fixed", bottom: "80px", left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 23, pointerEvents: "none",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: "8px",
+          }}>
+            <div style={{
+              fontFamily: "'Fredoka One', cursive",
+              color: "#fff",
+              fontSize: "clamp(16px, 2.5vw, 22px)",
+              textShadow: "0 2px 10px rgba(0,0,0,0.5)",
+              letterSpacing: "1px",
+            }}>
+              🔪 MASH TO FREE THE KNIFE!
+            </div>
+            <div style={{
+              width: "clamp(180px, 28vw, 260px)", height: "16px",
+              background: "rgba(255,255,255,0.25)",
+              borderRadius: "99px", overflow: "hidden",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+            }}>
+              {(() => {
+                const pct = Math.min(stuckClickCount / STUCK_CLICKS_NEEDED, 1);
+                // hue: 105 (green) → 45 (yellow) → 10 (red-orange)
+                const hue = Math.round(105 - pct * 95);
+                return (
+                  <div style={{
+                    height: "100%",
+                    width: `${pct * 100}%`,
+                    background: `linear-gradient(90deg, hsl(${hue},72%,40%), hsl(${hue + 18},80%,58%))`,
+                    borderRadius: "99px",
+                    transition: "width 0.05s ease, background 0.15s ease",
+                    boxShadow: `0 0 ${6 + pct * 10}px hsl(${hue},80%,55%)`,
+                  }} />
+                );
+              })()}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Countdown */}
+      {countdown !== null && (
+        <span
+          key={countdown}
+          className={`countdown-num${countdown === "GO" ? " countdown-go" : ""}`}
+        >
+          {countdown}
+        </span>
+      )}
+
       {/* Results screen */}
       {showResults && (
         <div style={{
@@ -991,8 +1551,13 @@ export default function FishPrepGame() {
 
             <div style={{ display: "flex", gap: "8px", justifyContent: "center", margin: "18px 0" }}>
               {[0, 1, 2].map((i) => (
-                <div key={i} className={`honey${honeyStars[i] ? " earned pop" : ""}`}>
-                  <img src={honeyStars[i] ? filledHoneyImg : blankHoneyImg} alt="" />
+                <div key={i} className={`honey${honeyStars[i] ? " earned pop" : ""}`} style={{ position: "relative" }}>
+                  <img src={blankHoneyImg} alt="" />
+                  <img src={filledHoneyImg} alt="" style={{
+                    position: "absolute", top: 0, left: 0,
+                    opacity: honeyStars[i] ? 1 : 0,
+                    transition: "opacity 500ms ease",
+                  }} />
                 </div>
               ))}
             </div>
@@ -1003,16 +1568,27 @@ export default function FishPrepGame() {
                 padding: "18px 32px", boxShadow: "0 8px 15px rgba(0,0,0,0.1)",
               }}>
                 <div style={{ fontSize: "14px", letterSpacing: "2px", opacity: 0.6, color: "#5a4a35" }}>
-                  SUSTAINABILITY
+                  POINTS
                 </div>
                 <div style={{ fontSize: "clamp(28px,4vw,42px)", color: "#5a4a35" }}>
-                  {sustainabilityScore} / 3
+                  {score}
+                </div>
+              </div>
+              <div style={{
+                background: "#e8e1cf", borderRadius: "22px",
+                padding: "18px 32px", boxShadow: "0 8px 15px rgba(0,0,0,0.1)",
+              }}>
+                <div style={{ fontSize: "14px", letterSpacing: "2px", opacity: 0.6, color: "#5a4a35" }}>
+                  FISH PREPPED
+                </div>
+                <div style={{ fontSize: "clamp(28px,4vw,42px)", color: "#5a4a35" }}>
+                  {fishPrepped}
                 </div>
               </div>
             </div>
 
             <div style={{ color: "#5c5040", marginBottom: "28px", fontSize: "clamp(13px,2.2vw,16px)", lineHeight: 1.45 }}>
-              {messages[sustainabilityScore] || messages[1]}
+              {messages[tutorialStarsRef.current] || messages[1]}
             </div>
 
             <div style={{ display: "flex", justifyContent: "center", gap: "16px", flexWrap: "wrap" }}>
@@ -1032,6 +1608,24 @@ export default function FishPrepGame() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* debug nav */}
+      {debugMode && (
+        <div style={{
+          position: "fixed", bottom: "60px", left: "50%", transform: "translateX(-50%)",
+          zIndex: 300, display: "flex", alignItems: "center", gap: "16px",
+          background: "rgba(0,0,0,0.75)", borderRadius: "16px", padding: "10px 24px",
+          fontFamily: "'Fredoka One', cursive", color: "white",
+        }}>
+          <button onClick={() => setDebugFishIndex((i) => (i - 1 + ALL_FISH.length) % ALL_FISH.length)}
+            style={{ background: "none", border: "none", color: "white", fontSize: "22px", cursor: "pointer" }}>◀</button>
+          <span style={{ fontSize: "18px", minWidth: "120px", textAlign: "center" }}>
+            {debugFishIndex + 1} / {ALL_FISH.length} — {ALL_FISH[debugFishIndex].name}
+          </span>
+          <button onClick={() => setDebugFishIndex((i) => (i + 1) % ALL_FISH.length)}
+            style={{ background: "none", border: "none", color: "white", fontSize: "22px", cursor: "pointer" }}>▶</button>
         </div>
       )}
 
