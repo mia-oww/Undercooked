@@ -1206,10 +1206,10 @@ export default function RiverGame() {
   }, []);
 
   const INTRO_DIALOGUE = [
-    { speaker: "Narrator", text: "Oh no! The river is full of trash,clean it up while catching salmon for our hungry customers!" },
+    { speaker: "Narrator", text: "Oh no! The river is full of trash,clean it up while catching various fish for our hungry customers!" },
     { speaker: "Narrator", text: "Move your mouse up and down to position your catcher along the left edge of the river." },
     { speaker: "Bear", text: "Switch between the Trash Can and Fish Net using SPACE or the button above. Only catch what matches!" },
-    { speaker: "Bear", text: "Build a trash combo for bonus points, and catch as many salmon as you can. Good luck!" },
+    { speaker: "Bear", text: "Build a trash combo for bonus points, and catch as many fish as you can. Keep your eyes peeled for special rainbow and golden fish worth more points! Good luck!" },
   ];
 
   const isLastDialogue = dialogueIndex === INTRO_DIALOGUE.length - 1;
